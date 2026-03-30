@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     SqlPlanDatabase planDatabase;
     engine.setInitialProperties({{ "planDatabase", QVariant::fromValue(&planDatabase) }});
 
-    const QUrl url(QStringLiteral("qrc:/pages/eventcalendar.qml"));
+    const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
         if (!obj && url == objUrl)

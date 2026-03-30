@@ -43,7 +43,7 @@ Item {
         rightPadding: calBtn.width + 4
 
         placeholderText: DateTimeUtils.dateTimeFormat.toLowerCase()
-        inputMethodHints: Qt.ImhDateTime
+        inputMethodHints: Qt.ImhDateTime || 0  // ImhDateTime may be undefined on WASM
 
         onEditingFinished: {
             var dt = DateTimeUtils.parseDateTime(text)

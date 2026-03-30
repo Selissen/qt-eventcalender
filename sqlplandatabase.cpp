@@ -6,6 +6,12 @@
 #include <QSqlQuery>
 #include <QVariantMap>
 
+#ifdef Q_OS_WASM
+#  include <QDir>
+#  include <QFile>
+#  include <QStandardPaths>
+#endif
+
 // ── Construction / destruction ───────────────────────────────────────────────
 
 SqlPlanDatabase::SqlPlanDatabase(const QString &connectionName,
@@ -15,13 +21,27 @@ SqlPlanDatabase::SqlPlanDatabase(const QString &connectionName,
     , m_connectionName(connectionName)
 {
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
+
+#ifdef Q_OS_WASM
+    // On WebAssembly, Qt mounts the AppDataLocation path to IndexedDB (IDBFS),
+    // giving us persistent storage that survives page reloads.
+    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataDir);
+    const QString dbPath = dataDir + "/plans.db";
+    const bool isNewDb = !QFile::exists(dbPath);
+    db.setDatabaseName(dbPath);
+#else
+    // Desktop: in-memory database; fast and isolated per run.
     db.setDatabaseName(":memory:");
+    constexpr bool isNewDb = true;
+#endif
+
     if (!db.open()) {
         qFatal("Cannot open plan database: %s", qPrintable(db.lastError().text()));
         return;
     }
     createSchema(db);
-    if (withSampleData)
+    if (isNewDb && withSampleData)
         seedSampleData(db);
 }
 
@@ -283,25 +303,27 @@ QVariantList SqlPlanDatabase::plannedHoursPerUnit(QDate start, QDate end) const
 
 void SqlPlanDatabase::createSchema(QSqlDatabase &db)
 {
+    // IF NOT EXISTS / INSERT OR IGNORE make this safe to call against a
+    // persisted WASM database that already has schema and reference data.
     QSqlQuery q(db);
-    q.exec("CREATE TABLE Unit ("
+    q.exec("CREATE TABLE IF NOT EXISTS Unit ("
            "  id   INTEGER PRIMARY KEY,"
            "  name TEXT NOT NULL"
            ")");
-    q.exec("INSERT INTO Unit (id, name) VALUES (1, 'Unit 1')");
-    q.exec("INSERT INTO Unit (id, name) VALUES (2, 'Unit 2')");
-    q.exec("INSERT INTO Unit (id, name) VALUES (3, 'Unit 3')");
+    q.exec("INSERT OR IGNORE INTO Unit (id, name) VALUES (1, 'Unit 1')");
+    q.exec("INSERT OR IGNORE INTO Unit (id, name) VALUES (2, 'Unit 2')");
+    q.exec("INSERT OR IGNORE INTO Unit (id, name) VALUES (3, 'Unit 3')");
 
-    q.exec("CREATE TABLE Route ("
-           "  id   INTEGER PRIMARY KEY AUTOINCREMENT,"
+    q.exec("CREATE TABLE IF NOT EXISTS Route ("
+           "  id   INTEGER PRIMARY KEY,"
            "  name TEXT NOT NULL"
            ")");
-    q.exec("INSERT INTO Route (name) VALUES ('Route A')");
-    q.exec("INSERT INTO Route (name) VALUES ('Route B')");
-    q.exec("INSERT INTO Route (name) VALUES ('Route C')");
-    q.exec("INSERT INTO Route (name) VALUES ('Route D')");
+    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (1, 'Route A')");
+    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (2, 'Route B')");
+    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (3, 'Route C')");
+    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (4, 'Route D')");
 
-    q.exec("CREATE TABLE Plan ("
+    q.exec("CREATE TABLE IF NOT EXISTS Plan ("
            "  id        INTEGER PRIMARY KEY AUTOINCREMENT,"
            "  name      TEXT,"
            "  startDate DATE,"
@@ -312,7 +334,7 @@ void SqlPlanDatabase::createSchema(QSqlDatabase &db)
            "  FOREIGN KEY(unit_id) REFERENCES Unit(id)"
            ")");
 
-    q.exec("CREATE TABLE PlanRoute ("
+    q.exec("CREATE TABLE IF NOT EXISTS PlanRoute ("
            "  plan_id  INTEGER NOT NULL,"
            "  route_id INTEGER NOT NULL,"
            "  PRIMARY KEY(plan_id, route_id),"
