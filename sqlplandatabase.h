@@ -26,7 +26,8 @@ public:
                              QObject *parent = nullptr);
     ~SqlPlanDatabase();
 
-    QList<Plan> plansForRange(QDate start, QDate end);
+    QList<Plan> plansForRange(QDate start, QDate end) const;
+    Q_INVOKABLE QVariantList plansForRangeQML(QDate start, QDate end) const;
 
     Q_INVOKABLE bool addPlan(const QString &name,
                              QDate startDate, int startTimeSecs,

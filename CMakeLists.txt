@@ -25,6 +25,7 @@ qt_add_qml_module(eventcalendar_lib
     QML_FILES
         atoms/DatePickerField.qml
         molecules/MonthGridDelegate.qml
+        molecules/WeekPlanCell.qml
         organisms/EventSidebar.qml
         organisms/PlanFooter.qml
         organisms/UnitFilterSidebar.qml

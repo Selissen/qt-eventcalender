@@ -100,7 +100,7 @@ QDateTime SqlPlanDatabase::dateTimeFromRecord(const QSqlQuery &q,
 
 // ── Public queries ───────────────────────────────────────────────────────────
 
-QList<Plan> SqlPlanDatabase::plansForRange(QDate start, QDate end)
+QList<Plan> SqlPlanDatabase::plansForRange(QDate start, QDate end) const
 {
     auto db = QSqlDatabase::database(m_connectionName);
 
@@ -147,6 +147,28 @@ QList<Plan> SqlPlanDatabase::plansForRange(QDate start, QDate end)
         plans.append(plan);
     }
     return plans;
+}
+
+QVariantList SqlPlanDatabase::plansForRangeQML(QDate start, QDate end) const
+{
+    QVariantList result;
+    const QList<Plan> plans = plansForRange(start, end);
+    result.reserve(plans.size());
+    for (const Plan &p : plans) {
+        QVariantMap m;
+        m[QStringLiteral("planId")]    = p.id;
+        m[QStringLiteral("name")]      = p.name;
+        m[QStringLiteral("startDate")] = p.startDate;
+        m[QStringLiteral("endDate")]   = p.endDate;
+        m[QStringLiteral("unitId")]    = p.unitId;
+        m[QStringLiteral("unitName")]  = p.unitName;
+        QVariantList rids;
+        rids.reserve(p.routeIds.size());
+        for (int id : p.routeIds) rids << id;
+        m[QStringLiteral("routeIds")] = rids;
+        result << m;
+    }
+    return result;
 }
 
 bool SqlPlanDatabase::addPlan(const QString &name,
