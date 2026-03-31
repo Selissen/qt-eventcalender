@@ -42,19 +42,23 @@ Item {
         we.setDate(we.getDate() + 6)
         var allPlans = planDatabase.plansForRangeQML(weekStart, we)
 
-        // Group plans: byUnitDay[unitId][dayIndex 0-6] = [plan, ...]
-        var byUnitDay = {}
-        u.forEach(function(unit) {
-            byUnitDay[unit.id] = [[], [], [], [], [], [], []]
-        })
+        // Pre-compute each plan's visible day range within this week
+        var ws0 = new Date(weekStart)
+        ws0.setHours(0, 0, 0, 0)
         allPlans.forEach(function(plan) {
-            var pd = new Date(plan.startDate)
-            pd.setHours(0, 0, 0, 0)
-            var ws = new Date(weekStart)
-            ws.setHours(0, 0, 0, 0)
-            var di = Math.round((pd - ws) / 86400000)
-            if (di >= 0 && di < 7 && byUnitDay[plan.unitId])
-                byUnitDay[plan.unitId][di].push(plan)
+            var pd = new Date(plan.startDate); pd.setHours(0, 0, 0, 0)
+            var ed = new Date(plan.endDate);   ed.setHours(0, 0, 0, 0)
+            plan._startDi = Math.max(0, Math.round((pd - ws0) / 86400000))
+            plan._endDi   = Math.min(6, Math.round((ed - ws0) / 86400000))
+        })
+
+        // Collect unique plans per unit (multi-day plans appear in multiple days;
+        // deduplicate by planId so the scheduler sees each plan exactly once)
+        var byUnit = {}
+        u.forEach(function(unit) { byUnit[unit.id] = {} })
+        allPlans.forEach(function(plan) {
+            if (byUnit[plan.unitId])
+                byUnit[plan.unitId][plan.planId] = plan
         })
 
         // Build the flat row array
@@ -63,19 +67,42 @@ Item {
             var uid = unit.id
             rows.push({ rowType: "header", unitId: uid, unitName: unit.name })
 
-            // How many plan rows does this unit need across the whole week?
-            var maxSlots = 1
-            for (var d = 0; d < 7; d++) {
-                var cnt = byUnitDay[uid][d].length
-                if (cnt > maxSlots) maxSlots = cnt
-            }
+            // Collect and sort unique plans by start day, then end day
+            var unitPlans = []
+            var seen = byUnit[uid]
+            Object.keys(seen).forEach(function(k) { unitPlans.push(seen[k]) })
+            unitPlans.sort(function(a, b) {
+                return a._startDi - b._startDi || a._endDi - b._endDi
+            })
 
-            // One row per slot, pre-filling nulls for days with fewer plans
-            for (var s = 0; s < maxSlots; s++) {
-                var dayPlans = []
-                for (var d = 0; d < 7; d++) {
-                    var arr = byUnitDay[uid][d]
-                    dayPlans.push(s < arr.length ? arr[s] : null)
+            // Greedy interval scheduling: assign each plan to the first slot where
+            // it doesn't overlap with the last-placed plan (slots are sorted, so
+            // checking only the tail is sufficient).
+            var slots = []  // slots[s] = [plan, ...] non-overlapping, sorted by startDi
+            unitPlans.forEach(function(plan) {
+                var placed = false
+                for (var s = 0; s < slots.length; s++) {
+                    var last = slots[s][slots[s].length - 1]
+                    if (plan._startDi > last._endDi) {
+                        slots[s].push(plan)
+                        placed = true
+                        break
+                    }
+                }
+                if (!placed)
+                    slots.push([plan])
+            })
+
+            // Emit one plan-row per slot; fill each day cell with the plan that
+            // covers it, or null for empty cells
+            var numSlots = Math.max(1, slots.length)
+            for (var s = 0; s < numSlots; s++) {
+                var dayPlans = [null, null, null, null, null, null, null]
+                if (s < slots.length) {
+                    slots[s].forEach(function(plan) {
+                        for (var d = plan._startDi; d <= plan._endDi; d++)
+                            dayPlans[d] = plan
+                    })
                 }
                 rows.push({ rowType: "plan", unitId: uid, slotIndex: s, dayPlans: dayPlans })
             }
