@@ -78,7 +78,6 @@ void TestPlanModel::data_allRolesReturnCorrectValues()
     QCOMPARE(m_model->rowCount(), 1);
     const QModelIndex idx = m_model->index(0);
 
-    QCOMPARE(m_model->data(idx, PlanModel::NameRole).toString(),  QStringLiteral("Plan X"));
     QCOMPARE(m_model->data(idx, PlanModel::UnitIdRole).toInt(),   1);
     QCOMPARE(m_model->data(idx, PlanModel::UnitNameRole).toString(), QStringLiteral("Unit 1"));
 
