@@ -255,6 +255,52 @@ bool SqlPlanDatabase::deletePlan(int id)
     return true;
 }
 
+void SqlPlanDatabase::reassignPlanId(int localId, int serverId)
+{
+    if (localId == serverId)
+        return;
+    auto db = QSqlDatabase::database(m_connectionName);
+
+    // Check whether the subscription echo already landed (it can arrive before
+    // AddPlanResponse on the same connection).
+    QSqlQuery check(db);
+    check.prepare("SELECT COUNT(*) FROM Plan WHERE id = :srv");
+    check.bindValue(":srv", serverId);
+    check.exec();
+    check.next();
+    const bool echoAlreadyApplied = check.value(0).toInt() > 0;
+
+    if (echoAlreadyApplied) {
+        // Server row is already correct; the local-id row is a duplicate — drop it.
+        QSqlQuery delRoutes(db);
+        delRoutes.prepare("DELETE FROM PlanRoute WHERE plan_id = :loc");
+        delRoutes.bindValue(":loc", localId);
+        if (!delRoutes.exec())
+            qWarning() << "reassignPlanId (drop dup routes) failed:" << delRoutes.lastError();
+        QSqlQuery delPlan(db);
+        delPlan.prepare("DELETE FROM Plan WHERE id = :loc");
+        delPlan.bindValue(":loc", localId);
+        if (!delPlan.exec())
+            qWarning() << "reassignPlanId (drop dup plan) failed:" << delPlan.lastError();
+    } else {
+        // Normal path: echo hasn't arrived yet — rename before it does.
+        QSqlQuery q1(db);
+        q1.prepare("UPDATE PlanRoute SET plan_id = :srv WHERE plan_id = :loc");
+        q1.bindValue(":srv", serverId);
+        q1.bindValue(":loc", localId);
+        if (!q1.exec())
+            qWarning() << "reassignPlanId (routes) failed:" << q1.lastError();
+        QSqlQuery q2(db);
+        q2.prepare("UPDATE Plan SET id = :srv WHERE id = :loc");
+        q2.bindValue(":srv", serverId);
+        q2.bindValue(":loc", localId);
+        if (!q2.exec())
+            qWarning() << "reassignPlanId (plan) failed:" << q2.lastError();
+    }
+
+    emit plansChanged();
+}
+
 void SqlPlanDatabase::applyRemotePlan(int id, const QString &name,
                                        QDate startDate, int startTimeSecs,
                                        QDate endDate,   int endTimeSecs,

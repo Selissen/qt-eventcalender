@@ -152,9 +152,18 @@ void GrpcSyncBackend::pushAddedPlan(int id)
     auto reply   = m_client->AddPlan(req);
     auto *rawPtr = reply.get();
     connect(rawPtr, &QGrpcCallReply::finished, this,
-            [id, r = std::move(reply)](const QGrpcStatus &status) {
-        if (!status.isOk())
+            [this, id, r = std::move(reply)](const QGrpcStatus &status) {
+        if (status.isOk()) {
+            if (const auto resp = r->read<calendar::AddPlanResponse>()) {
+                const int serverId = static_cast<int>(resp->id_proto());
+                // Align the local auto-increment id with the server-assigned id so
+                // the subscription echo (PLAN_ADDED with serverId) hits an existing
+                // row and does an in-place update instead of creating a duplicate.
+                m_db->reassignPlanId(id, serverId);
+            }
+        } else {
             qWarning() << "[GrpcSyncBackend] AddPlan" << id << "failed:" << status.message();
+        }
     });
 }
 

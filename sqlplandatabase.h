@@ -35,6 +35,11 @@ public:
     void setUnits(const QVariantList &units);
     void setRoutes(const QVariantList &routes);
 
+    // Called by PlanSyncManager after AddPlan succeeds to align the local
+    // auto-increment id with the server-assigned id. Prevents the subscription
+    // echo from creating a duplicate row. Does not emit narrow signals.
+    void reassignPlanId(int localId, int serverId);
+
     // Called by PlanSyncManager to apply remote plan events.
     // Does NOT emit planAdded/planUpdated/planDeleted to avoid push-back to the server.
     // Emits plansChanged() so the UI refreshes.
