@@ -25,6 +25,7 @@ qt_policy(SET QTP0004 NEW)
 qt_add_qml_module(eventcalendar_lib
     URI App
     QML_FILES
+        atoms/CalendarRange.qml
         atoms/DatePickerField.qml
         molecules/MonthGridDelegate.qml
         molecules/WeekPlanCell.qml

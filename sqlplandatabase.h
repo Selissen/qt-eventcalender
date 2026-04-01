@@ -35,6 +35,15 @@ public:
     void setUnits(const QVariantList &units);
     void setRoutes(const QVariantList &routes);
 
+    // Called by PlanSyncManager to apply remote plan events.
+    // Does NOT emit planAdded/planUpdated/planDeleted to avoid push-back to the server.
+    // Emits plansChanged() so the UI refreshes.
+    void applyRemotePlan(int id, const QString &name,
+                         QDate startDate, int startTimeSecs,
+                         QDate endDate,   int endTimeSecs,
+                         int unitId, const QList<int> &routeIds);
+    void applyRemoteDelete(int id);
+
     Q_INVOKABLE bool addPlan(const QString &name,
                              QDate startDate, int startTimeSecs,
                              QDate endDate,   int endTimeSecs,

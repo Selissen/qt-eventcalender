@@ -111,20 +111,30 @@ void GrpcSyncBackend::startSubscription()
 
 void GrpcSyncBackend::handlePlanEvent(const calendar::PlanEvent &event)
 {
-    // TODO: apply remote plan events to the local SqlPlanDatabase without
-    // triggering push-back to the server. Requires adding
-    // SqlPlanDatabase::applyRemotePlan(PlanData) / applyRemoteDelete(int)
-    // that perform the SQL mutation without emitting planAdded/Updated/Deleted.
     using PlanEventType = calendar::PlanEventTypeGadget::PlanEventType;
+    const int id = static_cast<int>(event.id_proto());
+
     switch (event.type()) {
     case PlanEventType::PLAN_ADDED:
-        qDebug() << "[GrpcSyncBackend] Remote PLAN_ADDED id=" << event.id_proto();
+    case PlanEventType::PLAN_UPDATED: {
+        const calendar::PlanData &d = event.data();
+        QDate startDate = QDate::fromString(d.startDate(), Qt::ISODate);
+        QDate endDate   = QDate::fromString(d.endDate(),   Qt::ISODate);
+        QList<int> routeIds;
+        for (auto rid : d.routeIds()) routeIds.append(static_cast<int>(rid));
+
+        qDebug() << "[GrpcSyncBackend] Remote"
+                 << (event.type() == PlanEventType::PLAN_ADDED ? "PLAN_ADDED" : "PLAN_UPDATED")
+                 << "id=" << id;
+
+        m_db->applyRemotePlan(id, d.name(), startDate, d.startTimeSecs(),
+                              endDate, d.endTimeSecs(), static_cast<int>(d.unitId()),
+                              routeIds);
         break;
-    case PlanEventType::PLAN_UPDATED:
-        qDebug() << "[GrpcSyncBackend] Remote PLAN_UPDATED id=" << event.id_proto();
-        break;
+    }
     case PlanEventType::PLAN_DELETED:
-        qDebug() << "[GrpcSyncBackend] Remote PLAN_DELETED id=" << event.id_proto();
+        qDebug() << "[GrpcSyncBackend] Remote PLAN_DELETED id=" << id;
+        m_db->applyRemoteDelete(id);
         break;
     }
 }

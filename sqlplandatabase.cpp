@@ -240,7 +240,8 @@ bool SqlPlanDatabase::deletePlan(int id)
     QSqlQuery delRoutes(db);
     delRoutes.prepare("DELETE FROM PlanRoute WHERE plan_id = :id");
     delRoutes.bindValue(":id", id);
-    delRoutes.exec();
+    if (!delRoutes.exec())
+        qWarning() << "deletePlan (routes) failed:" << delRoutes.lastError();
 
     QSqlQuery query(db);
     query.prepare("DELETE FROM Plan WHERE id = :id");
@@ -252,6 +253,62 @@ bool SqlPlanDatabase::deletePlan(int id)
     emit planDeleted(id);
     emit plansChanged();
     return true;
+}
+
+void SqlPlanDatabase::applyRemotePlan(int id, const QString &name,
+                                       QDate startDate, int startTimeSecs,
+                                       QDate endDate,   int endTimeSecs,
+                                       int unitId, const QList<int> &routeIds)
+{
+    auto db = QSqlDatabase::database(m_connectionName);
+    QSqlQuery query(db);
+    query.prepare(
+        "INSERT OR REPLACE INTO Plan (id, name, startDate, startTime, endDate, endTime, unit_id) "
+        "VALUES (:id, :name, :startDate, :startTime, :endDate, :endTime, :unitId)"
+    );
+    query.bindValue(":id",        id);
+    query.bindValue(":name",      name);
+    query.bindValue(":startDate", startDate.toString("yyyy-MM-dd"));
+    query.bindValue(":startTime", startTimeSecs);
+    query.bindValue(":endDate",   endDate.toString("yyyy-MM-dd"));
+    query.bindValue(":endTime",   endTimeSecs);
+    query.bindValue(":unitId",    unitId);
+    if (!query.exec()) {
+        qWarning() << "applyRemotePlan failed:" << query.lastError();
+        return;
+    }
+
+    QSqlQuery delRoutes(db);
+    delRoutes.prepare("DELETE FROM PlanRoute WHERE plan_id = :id");
+    delRoutes.bindValue(":id", id);
+    if (!delRoutes.exec())
+        qWarning() << "applyRemotePlan (routes) failed:" << delRoutes.lastError();
+
+    QVariantList routeVariants;
+    routeVariants.reserve(routeIds.size());
+    for (int rid : routeIds) routeVariants << rid;
+    insertRouteLinks(id, routeVariants, db);
+
+    emit plansChanged();
+}
+
+void SqlPlanDatabase::applyRemoteDelete(int id)
+{
+    auto db = QSqlDatabase::database(m_connectionName);
+
+    QSqlQuery delRoutes(db);
+    delRoutes.prepare("DELETE FROM PlanRoute WHERE plan_id = :id");
+    delRoutes.bindValue(":id", id);
+    if (!delRoutes.exec())
+        qWarning() << "applyRemoteDelete (routes) failed:" << delRoutes.lastError();
+
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM Plan WHERE id = :id");
+    query.bindValue(":id", id);
+    if (!query.exec())
+        qWarning() << "applyRemoteDelete failed:" << query.lastError();
+
+    emit plansChanged();
 }
 
 Plan SqlPlanDatabase::planById(int id) const

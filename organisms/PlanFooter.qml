@@ -14,21 +14,14 @@ Item {
 
     implicitHeight: content.implicitHeight
 
-    // ── Date range (mirrors EventSidebar logic) ────────────────────────────
-    readonly property date rangeStart: {
-        if (weekViewActive)
-            return CalendarUtils.weekStart(displayDate, Qt.locale().firstDayOfWeek)
-        return new Date(displayDate.getFullYear(), displayDate.getMonth(), 1)
+    // ── Date range ────────────────────────────────────────────────────────
+    CalendarRange {
+        id: range
+        displayDate:    root.displayDate
+        weekViewActive: root.weekViewActive
     }
-    readonly property date rangeEnd: {
-        if (weekViewActive) {
-            var s = CalendarUtils.weekStart(displayDate, Qt.locale().firstDayOfWeek)
-            var e = new Date(s)
-            e.setDate(e.getDate() + 6)
-            return e
-        }
-        return new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 0)
-    }
+    readonly property date rangeStart: range.rangeStart
+    readonly property date rangeEnd:   range.rangeEnd
 
     // ── Data ──────────────────────────────────────────────────────────────
     property var unitData: []

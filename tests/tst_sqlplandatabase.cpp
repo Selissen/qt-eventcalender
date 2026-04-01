@@ -47,6 +47,24 @@ private slots:
     void unitFilter_setFilter_emitsSignals();
     void unitFilter_clearFilter_showsAllPlans();
 
+    // planById
+    void planById_existingPlan_returnsCorrectData();
+    void planById_missingPlan_returnsInvalidPlan();
+
+    // plansForRangeQML — shape of returned QVariantMap
+    void plansForRangeQML_shape();
+
+    // setUnits / setRoutes
+    void setUnits_replacesExistingUnit();
+    void setRoutes_replacesExistingRoute();
+
+    // applyRemotePlan / applyRemoteDelete
+    void applyRemotePlan_insertsNewPlan();
+    void applyRemotePlan_updatesExistingPlan();
+    void applyRemotePlan_doesNotEmitPlanAdded();
+    void applyRemoteDelete_removesPlan();
+    void applyRemoteDelete_doesNotEmitPlanDeleted();
+
 private:
     SqlPlanDatabase *m_db = nullptr;
 
@@ -290,6 +308,161 @@ void TestSqlPlanDatabase::unitFilter_clearFilter_showsAllPlans()
 
     m_db->setUnitFilter({});
     QCOMPARE(m_db->plansForRange(date(10), date(10)).size(), 3);
+}
+
+// ── planById ─────────────────────────────────────────────────────────────────
+
+void TestSqlPlanDatabase::planById_existingPlan_returnsCorrectData()
+{
+    m_db->addPlan("ById", date(10), 3600, date(10), 7200, 2, {1, 4});
+    const int id = firstPlanOnDay(10).id;
+
+    const Plan p = m_db->planById(id);
+    QCOMPARE(p.id,       id);
+    QCOMPARE(p.name,     QStringLiteral("ById"));
+    QCOMPARE(p.unitId,   2);
+    QCOMPARE(p.startDate.time(), QTime(1, 0));
+    QCOMPARE(p.endDate.time(),   QTime(2, 0));
+    QCOMPARE(p.routeIds.size(),  2);
+    QVERIFY(p.routeIds.contains(1));
+    QVERIFY(p.routeIds.contains(4));
+}
+
+void TestSqlPlanDatabase::planById_missingPlan_returnsInvalidPlan()
+{
+    const Plan p = m_db->planById(99999);
+    QCOMPARE(p.id, -1);   // default-constructed Plan has id == -1
+    QVERIFY(p.name.isEmpty());
+}
+
+// ── plansForRangeQML ─────────────────────────────────────────────────────────
+
+void TestSqlPlanDatabase::plansForRangeQML_shape()
+{
+    m_db->addPlan("QML Plan", date(10), 3600, date(10), 7200, 1, {2, 3});
+
+    const QVariantList list = m_db->plansForRangeQML(date(10), date(10));
+    QCOMPARE(list.size(), 1);
+
+    const QVariantMap m = list.first().toMap();
+    QVERIFY(m.contains(QStringLiteral("planId")));
+    QVERIFY(m.contains(QStringLiteral("name")));
+    QVERIFY(m.contains(QStringLiteral("startDate")));
+    QVERIFY(m.contains(QStringLiteral("endDate")));
+    QVERIFY(m.contains(QStringLiteral("unitId")));
+    QVERIFY(m.contains(QStringLiteral("unitName")));
+    QVERIFY(m.contains(QStringLiteral("routeIds")));
+
+    QCOMPARE(m[QStringLiteral("name")].toString(),     QStringLiteral("QML Plan"));
+    QCOMPARE(m[QStringLiteral("unitId")].toInt(),      1);
+    QCOMPARE(m[QStringLiteral("unitName")].toString(), QStringLiteral("Unit 1"));
+
+    const QVariantList rids = m[QStringLiteral("routeIds")].toList();
+    QCOMPARE(rids.size(), 2);
+}
+
+// ── setUnits / setRoutes ──────────────────────────────────────────────────────
+
+void TestSqlPlanDatabase::setUnits_replacesExistingUnit()
+{
+    QSignalSpy spy(m_db, &SqlPlanDatabase::plansChanged);
+
+    QVariantList updated;
+    updated << QVariantMap{{QStringLiteral("id"), 1}, {QStringLiteral("name"), QStringLiteral("Alpha")}};
+    m_db->setUnits(updated);
+
+    QCOMPARE(spy.count(), 1);   // emits plansChanged so callers refresh
+
+    const QVariantList units = m_db->allUnits();
+    // id 1 should now be "Alpha"
+    bool found = false;
+    for (const QVariant &v : units) {
+        const QVariantMap u = v.toMap();
+        if (u[QStringLiteral("id")].toInt() == 1) {
+            QCOMPARE(u[QStringLiteral("name")].toString(), QStringLiteral("Alpha"));
+            found = true;
+        }
+    }
+    QVERIFY(found);
+}
+
+void TestSqlPlanDatabase::setRoutes_replacesExistingRoute()
+{
+    QVariantList updated;
+    updated << QVariantMap{{QStringLiteral("id"), 1}, {QStringLiteral("name"), QStringLiteral("New Route A")}};
+    m_db->setRoutes(updated);
+
+    const QVariantList routes = m_db->allRoutes();
+    bool found = false;
+    for (const QVariant &v : routes) {
+        const QVariantMap r = v.toMap();
+        if (r[QStringLiteral("id")].toInt() == 1) {
+            QCOMPARE(r[QStringLiteral("name")].toString(), QStringLiteral("New Route A"));
+            found = true;
+        }
+    }
+    QVERIFY(found);
+}
+
+// ── applyRemotePlan / applyRemoteDelete ───────────────────────────────────────
+
+void TestSqlPlanDatabase::applyRemotePlan_insertsNewPlan()
+{
+    m_db->applyRemotePlan(500, "Remote Plan", date(10), 3600, date(10), 7200, 1, {2});
+
+    const Plan p = m_db->planById(500);
+    QCOMPARE(p.id,   500);
+    QCOMPARE(p.name, QStringLiteral("Remote Plan"));
+    QCOMPARE(p.unitId, 1);
+    QCOMPARE(p.routeIds.size(), 1);
+    QVERIFY(p.routeIds.contains(2));
+}
+
+void TestSqlPlanDatabase::applyRemotePlan_updatesExistingPlan()
+{
+    m_db->applyRemotePlan(501, "Original",  date(10), 0, date(10), 3600, 1, {1});
+    m_db->applyRemotePlan(501, "Updated",   date(11), 0, date(11), 7200, 2, {3, 4});
+
+    const Plan p = m_db->planById(501);
+    QCOMPARE(p.name,   QStringLiteral("Updated"));
+    QCOMPARE(p.unitId, 2);
+    QCOMPARE(p.startDate.date(), date(11));
+    QCOMPARE(p.routeIds.size(),  2);
+    QVERIFY(!p.routeIds.contains(1));  // old route replaced
+}
+
+void TestSqlPlanDatabase::applyRemotePlan_doesNotEmitPlanAdded()
+{
+    QSignalSpy addedSpy(m_db,   &SqlPlanDatabase::planAdded);
+    QSignalSpy changedSpy(m_db, &SqlPlanDatabase::plansChanged);
+
+    m_db->applyRemotePlan(502, "Remote", date(10), 0, date(10), 3600, 1, {});
+
+    QCOMPARE(addedSpy.count(),   0);   // must not trigger push-back to server
+    QCOMPARE(changedSpy.count(), 1);   // UI must still refresh
+}
+
+void TestSqlPlanDatabase::applyRemoteDelete_removesPlan()
+{
+    m_db->applyRemotePlan(503, "ToRemove", date(10), 0, date(10), 3600, 1, {});
+    m_db->applyRemoteDelete(503);
+
+    const Plan p = m_db->planById(503);
+    QVERIFY(p.name.isEmpty());
+    QCOMPARE(m_db->plansForRange(date(10), date(10)).size(), 0);
+}
+
+void TestSqlPlanDatabase::applyRemoteDelete_doesNotEmitPlanDeleted()
+{
+    m_db->applyRemotePlan(504, "ToRemote", date(10), 0, date(10), 3600, 1, {});
+
+    QSignalSpy deletedSpy(m_db, &SqlPlanDatabase::planDeleted);
+    QSignalSpy changedSpy(m_db, &SqlPlanDatabase::plansChanged);
+
+    m_db->applyRemoteDelete(504);
+
+    QCOMPARE(deletedSpy.count(), 0);   // must not trigger push-back to server
+    QCOMPARE(changedSpy.count(), 1);   // UI must still refresh
 }
 
 QTEST_MAIN(TestSqlPlanDatabase)

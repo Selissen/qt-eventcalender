@@ -16,20 +16,13 @@ Item {
     required property bool         weekViewActive
 
     // ── Derived date range for the current view ────────────────────────────
-    readonly property date rangeStart: {
-        if (weekViewActive)
-            return CalendarUtils.weekStart(displayDate, Qt.locale().firstDayOfWeek)
-        return new Date(displayDate.getFullYear(), displayDate.getMonth(), 1)
+    CalendarRange {
+        id: range
+        displayDate:    root.displayDate
+        weekViewActive: root.weekViewActive
     }
-    readonly property date rangeEnd: {
-        if (weekViewActive) {
-            var s = CalendarUtils.weekStart(displayDate, Qt.locale().firstDayOfWeek)
-            var e = new Date(s)
-            e.setDate(e.getDate() + 6)
-            return e
-        }
-        return new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 0)
-    }
+    readonly property date rangeStart: range.rangeStart
+    readonly property date rangeEnd:   range.rangeEnd
 
     // ── State ──────────────────────────────────────────────────────────────
     property bool isEditing: false
@@ -76,6 +69,13 @@ Item {
 
         var sd = startPicker.selectedDateTime || new Date()
         var ed = endPicker.selectedDateTime   || new Date()
+
+        if (ed < sd) {
+            endDateError.visible = true
+            return
+        }
+        endDateError.visible = false
+
         var startSecs = sd.getHours() * 3600 + sd.getMinutes() * 60
         var endSecs   = ed.getHours() * 3600 + ed.getMinutes() * 60
 
@@ -295,12 +295,27 @@ Item {
                         Item { Layout.preferredHeight: 4 }
 
                         Label { text: qsTr("Start") }
-                        DatePickerField { id: startPicker; Layout.fillWidth: true }
+                        DatePickerField {
+                            id: startPicker
+                            Layout.fillWidth: true
+                            onSelectedDateTimeChanged: endDateError.visible = false
+                        }
 
                         Item { Layout.preferredHeight: 4 }
 
                         Label { text: qsTr("End") }
-                        DatePickerField { id: endPicker; Layout.fillWidth: true }
+                        DatePickerField {
+                            id: endPicker
+                            Layout.fillWidth: true
+                            onSelectedDateTimeChanged: endDateError.visible = false
+                        }
+                        Label {
+                            id: endDateError
+                            visible: false
+                            text: qsTr("End must be after start")
+                            color: Material.color(Material.Red)
+                            font.pixelSize: Qt.application.font.pixelSize * 0.82
+                        }
 
                         Item { Layout.preferredHeight: 8 }
 
