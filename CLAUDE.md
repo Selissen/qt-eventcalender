@@ -116,7 +116,9 @@ On WASM, `SqlPlanDatabase` stores the SQLite database in `QStandardPaths::AppDat
 
 `EC_GRPC_ENABLED` is defined by CMakeLists.txt when `Qt6::Protobuf` and `Qt6::Grpc` are found. The find is `OPTIONAL_COMPONENTS` so the build succeeds even when the Qt gRPC addon is not installed.
 
-**To enable gRPC on desktop:** install `qt.qt6.6110.addons.qtgrpc` via the Qt Online Installer. CMakeLists.txt will then automatically generate code from `proto/calendar.proto` via `qt_add_protobuf` / `qt_add_grpc`.
+**To enable gRPC on desktop:** two things must be present:
+1. Qt gRPC addon — cmake files are already at `X:/Qt/6.11.0/mingw_64/lib/cmake/Qt6Grpc` and `Qt6Protobuf` (installed). `qtprotobufgen.exe` and `qtgrpcgen.exe` are at `X:/Qt/6.11.0/mingw_64/bin/`.
+2. **`protoc.exe`** (Google's protobuf compiler) — `qtprotobufgen.exe` is a *plugin* for `protoc`, not a standalone replacement. `protoc` must be on `PATH`. Install via: `winget install protobuf` or `choco install protoc` or download from https://github.com/protocolbuffers/protobuf/releases. Once on PATH, CMake's `FindWrapProtoc.cmake` will find it automatically and `EC_GRPC_ENABLED` will be defined.
 
 **Server URL** is a placeholder in `eventcalendar.cpp`:
 - Desktop: `http://localhost:50051` (gRPC)

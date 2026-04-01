@@ -11,7 +11,7 @@ class SqlPlanDatabase;
 //   Q_OS_WASM        → QNetworkAccessManager REST/JSON (Emscripten / browser)
 //   neither          → no-op (desktop without gRPC addon installed)
 #if defined(EC_GRPC_ENABLED)
-namespace calendar { class CalendarServiceClient; }
+namespace calendar { namespace CalendarService { class Client; } }
 #elif defined(Q_OS_WASM)
 class QNetworkAccessManager;
 #endif
@@ -42,7 +42,7 @@ private:
     QUrl             m_serverUrl;
 
 #if defined(EC_GRPC_ENABLED)
-    calendar::CalendarServiceClient *m_grpcClient = nullptr;
+    calendar::CalendarService::Client *m_grpcClient = nullptr;
 #elif defined(Q_OS_WASM)
     QNetworkAccessManager *m_nam = nullptr;
 #endif

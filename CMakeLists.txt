@@ -54,9 +54,13 @@ target_link_libraries(eventcalendar_lib PUBLIC
 # gracefully (EC_GRPC_ENABLED is not defined, PlanSyncManager becomes a no-op).
 # Install via Qt Online Installer: qt.qt6.6110.addons.qtgrpc
 if(NOT EMSCRIPTEN)
-    find_package(Qt6 OPTIONAL_COMPONENTS Protobuf Grpc)
+    # Find Protobuf and Grpc individually to avoid the Qt6 umbrella package,
+    # which may set Qt6_FOUND=FALSE via the Qt Creator maintenance_tool_provider
+    # even when the cmake config files are physically present on disk.
+    find_package(Qt6Protobuf QUIET)
+    find_package(Qt6Grpc QUIET)
 
-    if(TARGET Qt6::Protobuf AND TARGET Qt6::Grpc)
+    if(Qt6Protobuf_FOUND AND Qt6Grpc_FOUND)
         qt_add_protobuf(calendar_proto
             PROTO_FILES proto/calendar.proto
             OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
@@ -67,11 +71,21 @@ if(NOT EMSCRIPTEN)
             OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
         )
 
+        # The generated gRPC client DLL references symbols from the proto target;
+        # it must link calendar_proto directly or the linker will find undefined refs.
+        target_link_libraries(calendar_grpc PRIVATE calendar_proto)
+
         target_link_libraries(eventcalendar_lib PUBLIC
             Qt6::Protobuf
             Qt6::Grpc
             calendar_proto
             calendar_grpc
+        )
+
+        # Make the generated proto_gen/ headers visible when compiling eventcalendar_lib
+        # sources (e.g. plansyncmanager.cpp) that include them directly.
+        target_include_directories(eventcalendar_lib PUBLIC
+            "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
         )
 
         target_compile_definitions(eventcalendar_lib PUBLIC EC_GRPC_ENABLED)
