@@ -45,7 +45,6 @@ Item {
     // ── Public API ─────────────────────────────────────────────────────────
     function requestEdit(planId, planName, startDt, endDt, unitId, routeIds) {
         editPlanId                   = planId
-        nameField.text               = planName
         startPicker.selectedDateTime = startDt
         endPicker.selectedDateTime   = endDt
 
@@ -64,9 +63,6 @@ Item {
 
     // ── Helpers ────────────────────────────────────────────────────────────
     function savePlan() {
-        var name = nameField.text.trim()
-        if (name === "") return
-
         var sd = startPicker.selectedDateTime || new Date()
         var ed = endPicker.selectedDateTime   || new Date()
 
@@ -86,9 +82,9 @@ Item {
             if (routesModel.get(i).checked) routeIds.push(routesModel.get(i).routeId)
 
         if (editPlanId === -1)
-            root.planDatabase.addPlan(name, sd, startSecs, ed, endSecs, unitId, routeIds)
+            root.planDatabase.addPlan("", sd, startSecs, ed, endSecs, unitId, routeIds)
         else
-            root.planDatabase.updatePlan(editPlanId, name, sd, startSecs, ed, endSecs, unitId, routeIds)
+            root.planDatabase.updatePlan(editPlanId, "", sd, startSecs, ed, endSecs, unitId, routeIds)
 
         isEditing = false
     }
@@ -153,7 +149,6 @@ Item {
                     Material.foreground: "white"
                     onClicked: {
                         editPlanId = -1
-                        nameField.text = ""
                         var d = root.displayDate
                         startPicker.selectedDateTime = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9,  0)
                         endPicker.selectedDateTime   = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10, 0)
@@ -191,13 +186,14 @@ Item {
                         width: planList.width
                         height: delegateLayout.implicitHeight
 
-                        required property int    planId
-                        required property string name
-                        required property var    startDate
-                        required property var    endDate
-                        required property int    unitId
-                        required property string unitName
-                        required property var    routeIds
+                        required property int       planId
+                        required property string    name
+                        required property var       startDate
+                        required property var       endDate
+                        required property int       unitId
+                        required property string    unitName
+                        required property var       routeIds
+                        required property var       routeNames
 
                         ColumnLayout {
                             id: delegateLayout
@@ -212,7 +208,7 @@ Item {
                                 Layout.topMargin:   8
 
                                 Label {
-                                    text: name
+                                    text: unitName
                                     font.bold: true
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -235,24 +231,25 @@ Item {
                                       + Qt.formatTime(startDate, "hh:mm")
                                       + " \u2013 "
                                       + Qt.formatTime(endDate, "hh:mm")
-                                      + "  \u00B7  "
-                                      + unitName
                                 font.pixelSize: Qt.application.font.pixelSize * 0.82
                                 opacity: 0.6
                                 Layout.leftMargin: 12
                             }
 
                             Label {
-                                visible: routeIds.length > 0
-                                text: qsTr("Routes: ") + routeIds.length
+                                visible: routeNames.length > 0
+                                text: routeNames.join(", ")
                                 font.pixelSize: Qt.application.font.pixelSize * 0.82
                                 opacity: 0.6
                                 Layout.leftMargin: 12
                                 Layout.bottomMargin: 8
+                                Layout.rightMargin: 12
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
                             }
 
                             Item {
-                                visible: routeIds.length === 0
+                                visible: routeNames.length === 0
                                 Layout.preferredHeight: 8
                             }
 
@@ -285,11 +282,13 @@ Item {
 
                         Item { Layout.preferredHeight: 4 }
 
-                        Label { text: qsTr("Name") }
-                        TextField {
-                            id: nameField
+                        Label { text: qsTr("Unit") }
+                        ComboBox {
+                            id: unitCombo
                             Layout.fillWidth: true
-                            placeholderText: qsTr("Plan name")
+                            model: unitsModel
+                            textRole: "unitName"
+                            valueRole: "unitId"
                         }
 
                         Item { Layout.preferredHeight: 4 }
@@ -315,17 +314,6 @@ Item {
                             text: qsTr("End must be after start")
                             color: Material.color(Material.Red)
                             font.pixelSize: Qt.application.font.pixelSize * 0.82
-                        }
-
-                        Item { Layout.preferredHeight: 8 }
-
-                        Label { text: qsTr("Unit") }
-                        ComboBox {
-                            id: unitCombo
-                            Layout.fillWidth: true
-                            model: unitsModel
-                            textRole: "unitName"
-                            valueRole: "unitId"
                         }
 
                         Item { Layout.preferredHeight: 8 }

@@ -13,6 +13,7 @@ struct Plan {
     int unitId = -1;
     QString unitName;
     QList<int> routeIds;
+    QStringList routeNames;
 };
 
 #endif // PLAN_H

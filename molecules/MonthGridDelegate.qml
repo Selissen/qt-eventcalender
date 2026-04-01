@@ -71,13 +71,14 @@ ColumnLayout {
             topPadding: 3
             bottomPadding: 3
 
-            required property int    planId
-            required property string name
-            required property var    startDate
-            required property var    endDate
-            required property int    unitId
-            required property string unitName
-            required property var    routeIds
+            required property int       planId
+            required property string    name
+            required property var       startDate
+            required property var       endDate
+            required property int       unitId
+            required property string    unitName
+            required property var       routeIds
+            required property var       routeNames
 
             Material.theme: Material.Dark
 
@@ -91,27 +92,20 @@ ColumnLayout {
 
                 Label {
                     width: parent.width
-                    text: unitName
-                    font.pixelSize: Qt.application.font.pixelSize * 0.68
+                    text: unitName + "  " + Qt.formatTime(startDate, "hh:mm") + "\u2013" + Qt.formatTime(endDate, "hh:mm")
+                    font.pixelSize: Qt.application.font.pixelSize * 0.75
                     font.bold: true
                     color: itemDelegate.Material.foreground
-                    opacity: 0.75
                     elide: Text.ElideRight
                 }
                 Label {
                     width: parent.width
-                    text: name
-                    font.pixelSize: Qt.application.font.pixelSize * 0.8
-                    color: itemDelegate.Material.foreground
-                    elide: Text.ElideRight
-                }
-                Label {
-                    width: parent.width
-                    text: Qt.formatTime(startDate, "hh:mm") + " \u2013 " + Qt.formatTime(endDate, "hh:mm")
+                    text: routeNames.join(", ")
                     font.pixelSize: Qt.application.font.pixelSize * 0.68
                     color: itemDelegate.Material.foreground
                     opacity: 0.75
                     elide: Text.ElideRight
+                    visible: routeNames.length > 0
                 }
             }
 

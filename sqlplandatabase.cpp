@@ -138,11 +138,16 @@ QList<Plan> SqlPlanDatabase::plansForRange(QDate start, QDate end) const
         plan.endDate   = dateTimeFromRecord(query, "endDate",   "endTime");
 
         QSqlQuery routeQ(db);
-        routeQ.prepare("SELECT route_id FROM PlanRoute WHERE plan_id = :id");
+        routeQ.prepare(
+            "SELECT pr.route_id, r.name AS routeName "
+            "FROM PlanRoute pr JOIN Route r ON r.id = pr.route_id "
+            "WHERE pr.plan_id = :id ORDER BY r.name");
         routeQ.bindValue(":id", plan.id);
         if (routeQ.exec()) {
-            while (routeQ.next())
-                plan.routeIds.append(routeQ.value(0).toInt());
+            while (routeQ.next()) {
+                plan.routeIds.append(routeQ.value("route_id").toInt());
+                plan.routeNames.append(routeQ.value("routeName").toString());
+            }
         }
         plans.append(plan);
     }
@@ -165,7 +170,8 @@ QVariantList SqlPlanDatabase::plansForRangeQML(QDate start, QDate end) const
         QVariantList rids;
         rids.reserve(p.routeIds.size());
         for (int id : p.routeIds) rids << id;
-        m[QStringLiteral("routeIds")] = rids;
+        m[QStringLiteral("routeIds")]    = rids;
+        m[QStringLiteral("routeNames")]  = QVariant::fromValue(p.routeNames);
         result << m;
     }
     return result;

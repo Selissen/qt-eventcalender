@@ -28,7 +28,8 @@ public:
         EndDateRole,
         UnitIdRole,
         UnitNameRole,
-        RouteIdsRole
+        RouteIdsRole,
+        RouteNamesRole
     };
     Q_ENUM(PlanRole)
 

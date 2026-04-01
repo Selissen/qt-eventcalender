@@ -75,6 +75,8 @@ QVariant PlanModel::data(const QModelIndex &index, int role) const
         for (int id : p.routeIds) ids.append(id);
         return ids;
     }
+    case RouteNamesRole:
+        return QVariant::fromValue(p.routeNames);
     default: return QVariant();
     }
 }
@@ -88,7 +90,8 @@ QHash<int, QByteArray> PlanModel::roleNames() const
         { EndDateRole,   "endDate"   },
         { UnitIdRole,    "unitId"    },
         { UnitNameRole,  "unitName"  },
-        { RouteIdsRole,  "routeIds"  }
+        { RouteIdsRole,   "routeIds"   },
+        { RouteNamesRole, "routeNames" }
     };
     return roles;
 }
