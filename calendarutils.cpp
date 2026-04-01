@@ -89,30 +89,30 @@ QVariantList CalendarUtils::buildWeekGrid(const QVariantList &units,
             return a.startDi < b.startDi || (a.startDi == b.startDi && a.endDi < b.endDi);
         });
 
-        // Greedy interval scheduling: each plan goes in the first slot where it
-        // doesn't overlap the last plan already placed (slots are sorted by startDi)
-        QList<QList<PlanEntry>> slots;
+        // Greedy interval scheduling: each plan goes in the first lane where it
+        // doesn't overlap the last plan already placed (lanes are sorted by startDi)
+        QList<QList<PlanEntry>> lanes;
         for (const PlanEntry &plan : unitPlans) {
             bool placed = false;
-            for (auto &slot : slots) {
-                if (plan.startDi > slot.last().endDi) {
-                    slot.push_back(plan);
+            for (auto &lane : lanes) {
+                if (plan.startDi > lane.last().endDi) {
+                    lane.push_back(plan);
                     placed = true;
                     break;
                 }
             }
             if (!placed)
-                slots.push_back({plan});
+                lanes.push_back({plan});
         }
 
-        const int numSlots = std::max(1, static_cast<int>(slots.size()));
-        for (int s = 0; s < numSlots; s++) {
+        const int numLanes = std::max(1, static_cast<int>(lanes.size()));
+        for (int s = 0; s < numLanes; s++) {
             QVariantList dayPlans;
             for (int d = 0; d < 7; d++)
                 dayPlans << QVariant(); // null = empty cell
 
-            if (s < slots.size()) {
-                for (const PlanEntry &plan : slots.at(s)) {
+            if (s < lanes.size()) {
+                for (const PlanEntry &plan : lanes.at(s)) {
                     for (int d = plan.startDi; d <= plan.endDi; d++)
                         dayPlans[d] = plan.map;
                 }
