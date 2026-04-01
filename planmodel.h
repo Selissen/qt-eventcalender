@@ -23,7 +23,6 @@ public:
 
     enum PlanRole {
         IdRole = Qt::UserRole,
-        NameRole,
         StartDateRole,
         EndDateRole,
         UnitIdRole,

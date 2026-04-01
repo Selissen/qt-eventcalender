@@ -20,7 +20,7 @@ ColumnLayout {
 
     required property int visibleMonth
 
-    signal planEditRequested(int planId, string name, var startDate, var endDate, int unitId, var routeIds)
+    signal planEditRequested(int planId, var startDate, var endDate, int unitId, var routeIds)
 
     Label {
         id: dayNameText
@@ -72,7 +72,6 @@ ColumnLayout {
             bottomPadding: 3
 
             required property int       planId
-            required property string    name
             required property var       startDate
             required property var       endDate
             required property int       unitId
@@ -109,7 +108,7 @@ ColumnLayout {
                 }
             }
 
-            onClicked: root.planEditRequested(planId, name, startDate, endDate, unitId, routeIds)
+            onClicked: root.planEditRequested(planId, startDate, endDate, unitId, routeIds)
         }
         model: PlanModel {
             planDatabase: root.planDatabase

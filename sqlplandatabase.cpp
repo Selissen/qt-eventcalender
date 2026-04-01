@@ -162,7 +162,6 @@ QVariantList SqlPlanDatabase::plansForRangeQML(QDate start, QDate end) const
     for (const Plan &p : plans) {
         QVariantMap m;
         m[QStringLiteral("planId")]    = p.id;
-        m[QStringLiteral("name")]      = p.name;
         m[QStringLiteral("startDate")] = p.startDate;
         m[QStringLiteral("endDate")]   = p.endDate;
         m[QStringLiteral("unitId")]    = p.unitId;

@@ -346,14 +346,13 @@ void TestSqlPlanDatabase::plansForRangeQML_shape()
 
     const QVariantMap m = list.first().toMap();
     QVERIFY(m.contains(QStringLiteral("planId")));
-    QVERIFY(m.contains(QStringLiteral("name")));
     QVERIFY(m.contains(QStringLiteral("startDate")));
     QVERIFY(m.contains(QStringLiteral("endDate")));
     QVERIFY(m.contains(QStringLiteral("unitId")));
     QVERIFY(m.contains(QStringLiteral("unitName")));
     QVERIFY(m.contains(QStringLiteral("routeIds")));
+    QVERIFY(m.contains(QStringLiteral("routeNames")));
 
-    QCOMPARE(m[QStringLiteral("name")].toString(),     QStringLiteral("QML Plan"));
     QCOMPARE(m[QStringLiteral("unitId")].toInt(),      1);
     QCOMPARE(m[QStringLiteral("unitName")].toString(), QStringLiteral("Unit 1"));
 

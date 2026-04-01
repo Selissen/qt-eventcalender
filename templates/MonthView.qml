@@ -14,7 +14,7 @@ GridLayout {
     required property PlanDatabase planDatabase
     required property date displayDate
 
-    signal planEditRequested(int planId, string name, var startDate, var endDate, int unitId, var routeIds)
+    signal planEditRequested(int planId, var startDate, var endDate, int unitId, var routeIds)
 
     columns: 2
 
@@ -56,7 +56,7 @@ GridLayout {
         delegate: MonthGridDelegate {
             visibleMonth: grid.month
             planDatabase: root.planDatabase
-            onPlanEditRequested: (id, name, sd, ed, uid, rids) => root.planEditRequested(id, name, sd, ed, uid, rids)
+            onPlanEditRequested: (id, sd, ed, uid, rids) => root.planEditRequested(id, sd, ed, uid, rids)
         }
 
         background: Item {

@@ -129,18 +129,18 @@ ApplicationWindow {
                 MonthView {
                     planDatabase: window.planDatabase
                     displayDate: window.displayDate
-                    onPlanEditRequested: (id, name, sd, ed, uid, rids) => {
+                    onPlanEditRequested: (id, sd, ed, uid, rids) => {
                         window.sidebarOpen = true
-                        sidebar.requestEdit(id, name, sd, ed, uid, rids)
+                        sidebar.requestEdit(id, sd, ed, uid, rids)
                     }
                 }
 
                 WeekView {
                     planDatabase: window.planDatabase
                     referenceDate: window.displayDate
-                    onPlanEditRequested: (id, name, sd, ed, uid, rids) => {
+                    onPlanEditRequested: (id, sd, ed, uid, rids) => {
                         window.sidebarOpen = true
-                        sidebar.requestEdit(id, name, sd, ed, uid, rids)
+                        sidebar.requestEdit(id, sd, ed, uid, rids)
                     }
                 }
             }

@@ -64,7 +64,6 @@ QVariant PlanModel::data(const QModelIndex &index, int role) const
     const Plan &p = m_plans.at(index.row());
     switch (role) {
     case IdRole:        return p.id;
-    case NameRole:      return p.name;
     case StartDateRole: return p.startDate;
     case EndDateRole:   return p.endDate;
     case UnitIdRole:    return p.unitId;
@@ -85,7 +84,6 @@ QHash<int, QByteArray> PlanModel::roleNames() const
 {
     static const QHash<int, QByteArray> roles {
         { IdRole,        "planId"    },
-        { NameRole,      "name"      },
         { StartDateRole, "startDate" },
         { EndDateRole,   "endDate"   },
         { UnitIdRole,    "unitId"    },

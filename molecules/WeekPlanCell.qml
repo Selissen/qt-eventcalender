@@ -53,7 +53,7 @@ Item {
 
             Label {
                 width: parent.width
-                text: cell.plan ? cell.plan.name : ""
+                text: cell.plan ? cell.plan.unitName : ""
                 font.pixelSize: Qt.application.font.pixelSize * 0.8
                 font.bold: true
                 color: "white"

@@ -43,7 +43,7 @@ Item {
     ListModel { id: routesModel }
 
     // ── Public API ─────────────────────────────────────────────────────────
-    function requestEdit(planId, planName, startDt, endDt, unitId, routeIds) {
+    function requestEdit(planId, startDt, endDt, unitId, routeIds) {
         editPlanId                   = planId
         startPicker.selectedDateTime = startDt
         endPicker.selectedDateTime   = endDt
@@ -187,7 +187,6 @@ Item {
                         height: delegateLayout.implicitHeight
 
                         required property int       planId
-                        required property string    name
                         required property var       startDate
                         required property var       endDate
                         required property int       unitId
@@ -216,7 +215,7 @@ Item {
                                 ToolButton {
                                     text: "\u270E"
                                     font.pixelSize: Qt.application.font.pixelSize * 0.9
-                                    onClicked: root.requestEdit(planId, name, startDate, endDate, unitId, routeIds)
+                                    onClicked: root.requestEdit(planId, startDate, endDate, unitId, routeIds)
                                 }
                                 ToolButton {
                                     text: "\u2715"

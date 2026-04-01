@@ -19,7 +19,7 @@ Item {
     required property PlanDatabase planDatabase
     required property date referenceDate
 
-    signal planEditRequested(int planId, string name, var startDate, var endDate, int unitId, var routeIds)
+    signal planEditRequested(int planId, var startDate, var endDate, int unitId, var routeIds)
 
     readonly property date weekStart: CalendarUtils.weekStart(referenceDate, Qt.locale().firstDayOfWeek)
 
@@ -237,7 +237,7 @@ Item {
                                     plan: !isHeader ? modelData.dayPlans[index] : null
                                     onClicked: function(p) {
                                         root.planEditRequested(
-                                            p.planId, p.name,
+                                            p.planId,
                                             p.startDate, p.endDate,
                                             p.unitId, p.routeIds)
                                     }
