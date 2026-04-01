@@ -39,6 +39,8 @@ Thumbs.db
 # Playwright (headless browser test runner)
 scripts/.playwright/
 
-# Test server — generated proto stubs and downloaded binaries
+# Test server — generated proto stubs, downloaded binaries, and plan store
 scripts/gen/
 scripts/bin/
+scripts/plans.json
+scripts/plans.tmp

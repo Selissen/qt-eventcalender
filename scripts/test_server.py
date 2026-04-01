@@ -6,8 +6,11 @@ Generates Python stubs from proto/calendar.proto on first run, then starts
 an in-memory server that implements all five RPCs plus the SubscribePlans
 server-streaming subscription.
 
+Plan data is persisted to a JSON store file so it survives server restarts
+and is shared across all client instances that connect to this server.
+
 Usage:
-    python scripts/test_server.py [--port 50051]
+    python scripts/test_server.py [--port 50051] [--store scripts/plans.json]
 
 Requirements:
     pip install grpcio grpcio-tools
@@ -16,6 +19,8 @@ Pair with start_grpcwebproxy.py when testing from the WASM build.
 """
 
 import argparse
+import json
+import os
 import sys
 import threading
 import queue
@@ -77,11 +82,70 @@ ROUTES = [
     calendar_pb2.Route(id=4, name="Route D"),
 ]
 
-# ── In-memory plan store ──────────────────────────────────────────────────────
+# ── Persistent plan store ─────────────────────────────────────────────────────
 
 _plans: dict[int, calendar_pb2.PlanData] = {}
 _next_id = 1
 _state_lock = threading.Lock()
+_store_path: Path | None = None  # set in main() from --store argument
+
+
+def _plan_to_dict(data: calendar_pb2.PlanData) -> dict:
+    return {
+        "name":            data.name,
+        "start_date":      data.start_date,
+        "start_time_secs": data.start_time_secs,
+        "end_date":        data.end_date,
+        "end_time_secs":   data.end_time_secs,
+        "unit_id":         data.unit_id,
+        "route_ids":       list(data.route_ids),
+    }
+
+
+def _plan_from_dict(d: dict) -> calendar_pb2.PlanData:
+    return calendar_pb2.PlanData(
+        name=d["name"],
+        start_date=d["start_date"],
+        start_time_secs=d["start_time_secs"],
+        end_date=d["end_date"],
+        end_time_secs=d["end_time_secs"],
+        unit_id=d["unit_id"],
+        route_ids=d.get("route_ids", []),
+    )
+
+
+def load_store(path: Path) -> None:
+    """Load persisted plans from *path* into the in-memory store."""
+    global _plans, _next_id
+    if not path.exists():
+        return
+    try:
+        with path.open() as f:
+            doc = json.load(f)
+        _next_id = doc.get("next_id", 1)
+        _plans   = {int(k): _plan_from_dict(v) for k, v in doc.get("plans", {}).items()}
+        print(f"[test_server] Loaded {len(_plans)} plan(s) from {path}")
+    except Exception as exc:
+        print(f"[test_server] WARNING: could not load store {path}: {exc}")
+
+
+def _save_store() -> None:
+    """Persist current in-memory state to disk (called while holding _state_lock)."""
+    if _store_path is None:
+        return
+    doc = {
+        "next_id": _next_id,
+        "plans":   {str(k): _plan_to_dict(v) for k, v in _plans.items()},
+    }
+    # Atomic write: write to a temp file then rename so readers never see a
+    # partial file even if the server is killed mid-write.
+    tmp = _store_path.with_suffix(".tmp")
+    try:
+        with tmp.open("w") as f:
+            json.dump(doc, f, indent=2)
+        os.replace(tmp, _store_path)
+    except Exception as exc:
+        print(f"[test_server] WARNING: could not save store {_store_path}: {exc}")
 
 # ── Subscription fanout ───────────────────────────────────────────────────────
 
@@ -123,6 +187,7 @@ class CalendarServicer(calendar_pb2_grpc.CalendarServiceServicer):
             plan_id = _next_id
             _next_id += 1
             _plans[plan_id] = request.data
+            _save_store()
         print(f"[test_server] AddPlan    id={plan_id}  name={request.data.name!r}"
               f"  unit={request.data.unit_id}")
         _broadcast(
@@ -142,6 +207,7 @@ class CalendarServicer(calendar_pb2_grpc.CalendarServiceServicer):
                               f"Plan {request.id} not found")
                 return
             _plans[request.id] = request.data
+            _save_store()
         print(f"[test_server] UpdatePlan id={request.id}  name={request.data.name!r}"
               f"  unit={request.data.unit_id}")
         _broadcast(
@@ -157,6 +223,7 @@ class CalendarServicer(calendar_pb2_grpc.CalendarServiceServicer):
     def DeletePlan(self, request, context):
         with _state_lock:
             data = _plans.pop(request.id, None)
+            _save_store()
         unit_id = data.unit_id if data else 0
         print(f"[test_server] DeletePlan id={request.id}")
         _broadcast(
@@ -199,12 +266,20 @@ class CalendarServicer(calendar_pb2_grpc.CalendarServiceServicer):
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global _store_path
+
     parser = argparse.ArgumentParser(
-        description="CalendarService gRPC test server (in-memory)"
+        description="CalendarService gRPC test server (persistent in-memory)"
     )
     parser.add_argument("--port", type=int, default=50051,
                         help="Port to listen on (default: 50051)")
+    parser.add_argument("--store", type=Path,
+                        default=SCRIPT_DIR / "plans.json",
+                        help="Path to the JSON plan store (default: scripts/plans.json)")
     args = parser.parse_args()
+
+    _store_path = args.store
+    load_store(_store_path)
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=16))
     calendar_pb2_grpc.add_CalendarServiceServicer_to_server(CalendarServicer(), server)
@@ -214,8 +289,10 @@ def main() -> None:
     server.start()
 
     print(f"[test_server] CalendarService listening on port {args.port} (insecure)")
-    print(f"[test_server] Units:  {[u.name for u in UNITS]}")
+    print(f"[test_server] Store : {_store_path}")
+    print(f"[test_server] Units :  {[u.name for u in UNITS]}")
     print(f"[test_server] Routes: {[r.name for r in ROUTES]}")
+    print(f"[test_server] Plans : {len(_plans)} loaded from store")
     print("[test_server] Press Ctrl+C to stop\n")
 
     try:
