@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Qt 6 Quick Controls 2 (Material theme) calendar app. Plans (events) are stored in SQLite via `QSqlDatabase`. The app targets both desktop (Windows/macOS) and WebAssembly.
 
+## Verification requirements
+
+Any change that touches `CMakeLists.txt`, `eventcalendar.cpp`, C++ headers/sources registered with `QML_ELEMENT`/`QML_SINGLETON`/`QML_UNCREATABLE`, or QML files **must be verified on both targets before being considered done**:
+
+1. **Desktop** — build in Qt Creator with the MinGW kit and confirm the app launches without errors.
+2. **WASM** — run `python scripts/check_wasm.py` (builds + headless smoke test) and confirm it exits 0.
+
+Do not mark a task complete or propose a commit until both checks pass (or explicitly confirm with the user that only one target is relevant).
+
 ## Build system
 
 The project is built through **Qt Creator** using CMake. Two active configurations live under `build/`:

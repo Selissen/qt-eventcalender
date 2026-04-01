@@ -8,6 +8,31 @@
 #include "sqlplandatabase.h"
 #include "plansyncmanager.h"
 
+// Suppress benign "Mutable view on type already registered" warnings emitted by
+// Qt Protobuf's generated type registration code.  These fire from
+// Q_CONSTRUCTOR_FUNCTION (C++ global constructors) in the generated protobuf TU,
+// so a handler installed in main() or via a peer global constructor arrives too
+// late.  __attribute__((constructor(200))) is guaranteed by GCC/Clang (MinGW and
+// Emscripten) to run before default-priority C++ static initializers, so our
+// filter is active before any protobuf registration warning can be emitted.
+static QtMessageHandler g_previousHandler = nullptr;
+static void filteredMessageHandler(QtMsgType type,
+                                   const QMessageLogContext &ctx,
+                                   const QString &msg)
+{
+    if (type == QtWarningMsg
+            && msg.contains(QLatin1String("Mutable view on type already registered")))
+        return;
+    if (g_previousHandler)
+        g_previousHandler(type, ctx, msg);
+    else
+        qt_message_output(type, ctx, msg);
+}
+__attribute__((constructor(200))) static void installFilteredMessageHandler()
+{
+    g_previousHandler = qInstallMessageHandler(filteredMessageHandler);
+}
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
