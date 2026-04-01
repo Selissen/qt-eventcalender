@@ -15,6 +15,7 @@ qt_add_library(eventcalendar_lib STATIC
     planmodel.cpp planmodel.h
     plansyncmanager.cpp plansyncmanager.h
     sqlplandatabase.cpp sqlplandatabase.h
+    syncbackend.h
 )
 
 # Qt 6.8+ requires qmldir files in each QML subdirectory for the engine to
@@ -47,53 +48,56 @@ target_link_libraries(eventcalendar_lib PUBLIC
     Qt6::Network
 )
 
-# Desktop only: Qt gRPC + Protobuf code generation from proto/calendar.proto.
-# WASM uses QNetworkAccessManager (REST/JSON) instead — the gRPC module is not
-# supported on Emscripten.
-# If Qt6::Protobuf / Qt6::Grpc are not installed, desktop sync is compiled out
-# gracefully (EC_GRPC_ENABLED is not defined, PlanSyncManager becomes a no-op).
-# Install via Qt Online Installer: qt.qt6.6110.addons.qtgrpc
-if(NOT EMSCRIPTEN)
-    # Find Protobuf and Grpc individually to avoid the Qt6 umbrella package,
-    # which may set Qt6_FOUND=FALSE via the Qt Creator maintenance_tool_provider
-    # even when the cmake config files are physically present on disk.
-    find_package(Qt6Protobuf QUIET)
-    find_package(Qt6Grpc QUIET)
+# Sync transport selection — one factory .cpp is compiled alongside grpcsyncbackend.cpp,
+# together they define createSyncBackend(). Both platforms use the same generated proto/gRPC
+# client code; only the channel type differs:
+#
+#   Desktop  → QGrpcHttp2Channel (native gRPC/HTTP-2, direct to server)
+#   WASM     → QGrpcWebChannel   (gRPC-Web framing over fetch, requires Envoy proxy)
+#   No gRPC  → NoopSyncBackend   (graceful fallback when addon is not installed)
+#
+# Find Protobuf and Grpc individually to bypass the Qt6 umbrella package, which can set
+# Qt6_FOUND=FALSE via Qt Creator's maintenance_tool_provider even when the cmake config
+# files are present on disk.
+find_package(Qt6Protobuf QUIET)
+find_package(Qt6Grpc QUIET)
 
-    if(Qt6Protobuf_FOUND AND Qt6Grpc_FOUND)
-        qt_add_protobuf(calendar_proto
-            PROTO_FILES proto/calendar.proto
-            OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
-        )
+if(Qt6Protobuf_FOUND AND Qt6Grpc_FOUND)
+    qt_add_protobuf(calendar_proto
+        PROTO_FILES proto/calendar.proto
+        OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
+    )
 
-        qt_add_grpc(calendar_grpc CLIENT
-            PROTO_FILES proto/calendar.proto
-            OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
-        )
+    qt_add_grpc(calendar_grpc CLIENT
+        PROTO_FILES proto/calendar.proto
+        OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
+    )
 
+    if(NOT EMSCRIPTEN)
         # The generated gRPC client DLL references symbols from the proto target;
         # it must link calendar_proto directly or the linker will find undefined refs.
         target_link_libraries(calendar_grpc PRIVATE calendar_proto)
-
-        target_link_libraries(eventcalendar_lib PUBLIC
-            Qt6::Protobuf
-            Qt6::Grpc
-            calendar_proto
-            calendar_grpc
-        )
-
-        # Make the generated proto_gen/ headers visible when compiling eventcalendar_lib
-        # sources (e.g. plansyncmanager.cpp) that include them directly.
-        target_include_directories(eventcalendar_lib PUBLIC
-            "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
-        )
-
-        target_compile_definitions(eventcalendar_lib PUBLIC EC_GRPC_ENABLED)
-        message(STATUS "[EventCalendar] Qt6::Grpc found — desktop gRPC sync enabled")
-    else()
-        message(STATUS "[EventCalendar] Qt6::Protobuf/Grpc not found — desktop gRPC sync disabled. "
-                       "Install qt.qt6.6110.addons.qtgrpc via the Qt Online Installer to enable it.")
     endif()
+
+    target_sources(eventcalendar_lib PRIVATE grpcsyncbackend.cpp grpcsyncbackend.h)
+    target_link_libraries(eventcalendar_lib PUBLIC
+        Qt6::Protobuf Qt6::Grpc calendar_proto calendar_grpc)
+    target_include_directories(eventcalendar_lib PUBLIC
+        "${CMAKE_CURRENT_BINARY_DIR}/proto_gen")
+
+    if(EMSCRIPTEN)
+        target_sources(eventcalendar_lib PRIVATE
+            qgrpcwebchannel.cpp qgrpcwebchannel.h
+            grpcchannel_web.cpp)
+        message(STATUS "[EventCalendar] WASM — gRPC-Web sync backend selected (requires Envoy proxy)")
+    else()
+        target_sources(eventcalendar_lib PRIVATE grpcchannel_http2.cpp)
+        message(STATUS "[EventCalendar] Desktop — gRPC/HTTP-2 sync backend selected")
+    endif()
+else()
+    target_sources(eventcalendar_lib PRIVATE noopsyncbackend.cpp noopsyncbackend.h)
+    message(STATUS "[EventCalendar] Qt6::Protobuf/Grpc not found — no-op sync backend. "
+                   "Install qt.qt6.6110.addons.qtgrpc via the Qt Online Installer to enable gRPC.")
 endif()
 
 qt_add_executable(eventcalendar

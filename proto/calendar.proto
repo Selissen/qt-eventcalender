@@ -35,6 +35,27 @@ message DeletePlanResponse { bool success = 1; }
 
 message Empty {}
 
+// ── Server-streaming subscriptions ───────────────────────────────────────────
+
+// Filter by unit IDs; leave empty to receive events for all units.
+message SubscribePlansRequest {
+    repeated int32 unit_ids = 1;
+}
+
+enum PlanEventType {
+    PLAN_ADDED   = 0;
+    PLAN_UPDATED = 1;
+    PLAN_DELETED = 2;
+}
+
+// Pushed by the server whenever a plan is mutated.
+// data is populated for PLAN_ADDED and PLAN_UPDATED; empty for PLAN_DELETED.
+message PlanEvent {
+    PlanEventType type = 1;
+    int32         id   = 2;
+    PlanData      data = 3;
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 service CalendarService {
@@ -43,4 +64,8 @@ service CalendarService {
     rpc AddPlan    (AddPlanRequest)    returns (AddPlanResponse);
     rpc UpdatePlan (UpdatePlanRequest) returns (UpdatePlanResponse);
     rpc DeletePlan (DeletePlanRequest) returns (DeletePlanResponse);
+
+    // Server-streaming subscription — works via gRPC (desktop) and
+    // gRPC-Web / Envoy (WASM browser). Stays open until cancelled.
+    rpc SubscribePlans (SubscribePlansRequest) returns (stream PlanEvent);
 }

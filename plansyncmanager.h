@@ -3,24 +3,21 @@
 
 #include <QObject>
 #include <QUrl>
+#include <memory>
 
 class SqlPlanDatabase;
-
-// Transport selection (compile-time):
-//   EC_GRPC_ENABLED  → Qt gRPC over HTTP/2 (desktop, requires qt.qt6.addons.qtgrpc)
-//   Q_OS_WASM        → QNetworkAccessManager REST/JSON (Emscripten / browser)
-//   neither          → no-op (desktop without gRPC addon installed)
-#if defined(EC_GRPC_ENABLED)
-namespace calendar { namespace CalendarService { class Client; } }
-#elif defined(Q_OS_WASM)
-class QNetworkAccessManager;
-#endif
+class ISyncBackend;
 
 // PlanSyncManager mirrors local plan mutations to a remote backend and pulls
 // reference data (units, routes) from the server on startup.
 //
-// It fails gracefully when the server is unreachable: a warning is logged but
-// the local SqlPlanDatabase is unaffected and the app remains fully usable.
+// Transport is selected at compile time by CMakeLists.txt:
+//   Qt6Grpc + desktop  → GrpcSyncBackend + QGrpcHttp2Channel  (native gRPC)
+//   Qt6Grpc + WASM     → GrpcSyncBackend + QGrpcWebChannel    (gRPC-Web via Envoy)
+//   Qt6Grpc not found  → NoopSyncBackend                      (graceful no-op)
+//
+// The app remains fully usable when the server is unreachable — failures are
+// logged as warnings but the local SqlPlanDatabase is never affected.
 class PlanSyncManager : public QObject
 {
     Q_OBJECT
@@ -33,19 +30,8 @@ public:
     void start();
 
 private:
-    void syncReferenceData();
-    void pushAddedPlan(int id);
-    void pushUpdatedPlan(int id);
-    void pushDeletedPlan(int id);
-
-    SqlPlanDatabase *m_db;
-    QUrl             m_serverUrl;
-
-#if defined(EC_GRPC_ENABLED)
-    calendar::CalendarService::Client *m_grpcClient = nullptr;
-#elif defined(Q_OS_WASM)
-    QNetworkAccessManager *m_nam = nullptr;
-#endif
+    SqlPlanDatabase              *m_db;
+    std::unique_ptr<ISyncBackend> m_backend;
 };
 
 #endif // PLANSYNCMANAGER_H
