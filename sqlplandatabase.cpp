@@ -192,7 +192,9 @@ bool SqlPlanDatabase::addPlan(const QString &name,
         qWarning() << "addPlan failed:" << query.lastError();
         return false;
     }
-    insertRouteLinks(query.lastInsertId().toInt(), routeIds, db);
+    const int newId = query.lastInsertId().toInt();
+    insertRouteLinks(newId, routeIds, db);
+    emit planAdded(newId);
     emit plansChanged();
     return true;
 }
@@ -226,6 +228,7 @@ bool SqlPlanDatabase::updatePlan(int id, const QString &name,
     delQ.exec();
 
     insertRouteLinks(id, routeIds, db);
+    emit planUpdated(id);
     emit plansChanged();
     return true;
 }
@@ -246,8 +249,69 @@ bool SqlPlanDatabase::deletePlan(int id)
         qWarning() << "deletePlan failed:" << query.lastError();
         return false;
     }
+    emit planDeleted(id);
     emit plansChanged();
     return true;
+}
+
+Plan SqlPlanDatabase::planById(int id) const
+{
+    auto db = QSqlDatabase::database(m_connectionName);
+    QSqlQuery query(db);
+    query.prepare(
+        "SELECT p.id, p.name, p.startDate, p.startTime, p.endDate, p.endTime, "
+        "       p.unit_id, u.name AS unitName "
+        "FROM Plan p JOIN Unit u ON p.unit_id = u.id "
+        "WHERE p.id = :id");
+    query.bindValue(":id", id);
+    if (!query.exec() || !query.next())
+        return {};
+
+    Plan plan;
+    plan.id        = query.value("id").toInt();
+    plan.name      = query.value("name").toString();
+    plan.unitId    = query.value("unit_id").toInt();
+    plan.unitName  = query.value("unitName").toString();
+    plan.startDate = dateTimeFromRecord(query, "startDate", "startTime");
+    plan.endDate   = dateTimeFromRecord(query, "endDate",   "endTime");
+
+    QSqlQuery routeQ(db);
+    routeQ.prepare("SELECT route_id FROM PlanRoute WHERE plan_id = :id");
+    routeQ.bindValue(":id", plan.id);
+    if (routeQ.exec()) {
+        while (routeQ.next())
+            plan.routeIds.append(routeQ.value(0).toInt());
+    }
+    return plan;
+}
+
+void SqlPlanDatabase::setUnits(const QVariantList &units)
+{
+    auto db = QSqlDatabase::database(m_connectionName);
+    for (const QVariant &v : units) {
+        const QVariantMap m = v.toMap();
+        QSqlQuery q(db);
+        q.prepare("INSERT OR REPLACE INTO Unit (id, name) VALUES (:id, :name)");
+        q.bindValue(":id",   m[QStringLiteral("id")].toInt());
+        q.bindValue(":name", m[QStringLiteral("name")].toString());
+        if (!q.exec())
+            qWarning() << "setUnits failed:" << q.lastError();
+    }
+    emit plansChanged(); // allUnits() callers need to refresh
+}
+
+void SqlPlanDatabase::setRoutes(const QVariantList &routes)
+{
+    auto db = QSqlDatabase::database(m_connectionName);
+    for (const QVariant &v : routes) {
+        const QVariantMap m = v.toMap();
+        QSqlQuery q(db);
+        q.prepare("INSERT OR REPLACE INTO Route (id, name) VALUES (:id, :name)");
+        q.bindValue(":id",   m[QStringLiteral("id")].toInt());
+        q.bindValue(":name", m[QStringLiteral("name")].toString());
+        if (!q.exec())
+            qWarning() << "setRoutes failed:" << q.lastError();
+    }
 }
 
 QVariantList SqlPlanDatabase::allRoutes() const

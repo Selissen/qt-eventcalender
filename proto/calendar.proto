@@ -1,0 +1,46 @@
+syntax = "proto3";
+package calendar;
+
+option optimize_for = SPEED;
+
+// ── Reference data ───────────────────────────────────────────────────────────
+
+message Unit  { int32 id = 1; string name = 2; }
+message Route { int32 id = 1; string name = 2; }
+
+message GetUnitsResponse  { repeated Unit  units  = 1; }
+message GetRoutesResponse { repeated Route routes = 1; }
+
+// ── Plan CRUD ────────────────────────────────────────────────────────────────
+
+// Dates are ISO strings ("yyyy-MM-dd"); times are seconds since midnight.
+message PlanData {
+    string name            = 1;
+    string start_date      = 2;
+    int32  start_time_secs = 3;
+    string end_date        = 4;
+    int32  end_time_secs   = 5;
+    int32  unit_id         = 6;
+    repeated int32 route_ids = 7;
+}
+
+message AddPlanRequest    { PlanData data = 1; }
+message AddPlanResponse   { int32 id = 1; bool success = 2; }
+
+message UpdatePlanRequest  { int32 id = 1; PlanData data = 2; }
+message UpdatePlanResponse { bool success = 1; }
+
+message DeletePlanRequest  { int32 id = 1; }
+message DeletePlanResponse { bool success = 1; }
+
+message Empty {}
+
+// ── Service ──────────────────────────────────────────────────────────────────
+
+service CalendarService {
+    rpc GetUnits   (Empty)             returns (GetUnitsResponse);
+    rpc GetRoutes  (Empty)             returns (GetRoutesResponse);
+    rpc AddPlan    (AddPlanRequest)    returns (AddPlanResponse);
+    rpc UpdatePlan (UpdatePlanRequest) returns (UpdatePlanResponse);
+    rpc DeletePlan (DeletePlanRequest) returns (DeletePlanResponse);
+}

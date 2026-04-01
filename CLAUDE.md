@@ -81,7 +81,7 @@ QML files follow an atomic design hierarchy (directory = layer):
 | Directory | Role |
 |---|---|
 | `atoms/` | Primitive reusable controls (e.g., `DatePickerField`) |
-| `molecules/` | Composites of atoms (e.g., `MonthGridDelegate`) |
+| `molecules/` | Composites of atoms (e.g., `MonthGridDelegate`, `WeekPlanCell`) |
 | `organisms/` | Feature-level components (sidebars, footer) |
 | `templates/` | Page-level layout skeletons (`MonthView`, `WeekView`) |
 | `pages/` | Application root (`eventcalendar.qml`) |
@@ -103,6 +103,44 @@ All QML imports `App` and uses `CalendarUtils` (singleton) and `DateTimeUtils` (
 ### WASM persistence
 
 On WASM, `SqlPlanDatabase` stores the SQLite database in `QStandardPaths::AppDataLocation`, which maps to IndexedDB (persistent across page reloads). On desktop it uses `:memory:`. Schema uses `CREATE TABLE IF NOT EXISTS` and `INSERT OR IGNORE` so re-opening an existing WASM database is safe.
+
+### Sync layer — `PlanSyncManager`
+
+`PlanSyncManager` mirrors local SQLite mutations to a remote backend. It is instantiated in `main()` alongside `SqlPlanDatabase` and calls `start()` to connect signals and trigger an initial reference-data pull (units, routes). Transport is selected at **compile time**:
+
+| Condition | Transport |
+|---|---|
+| `EC_GRPC_ENABLED` defined | Qt gRPC via `QGrpcHttp2Channel` (`CalendarService` stub) |
+| `Q_OS_WASM` defined | `QNetworkAccessManager` REST/JSON |
+| Neither | No-op (logs a message; app runs locally only) |
+
+`EC_GRPC_ENABLED` is defined by CMakeLists.txt when `Qt6::Protobuf` and `Qt6::Grpc` are found. The find is `OPTIONAL_COMPONENTS` so the build succeeds even when the Qt gRPC addon is not installed.
+
+**To enable gRPC on desktop:** install `qt.qt6.6110.addons.qtgrpc` via the Qt Online Installer. CMakeLists.txt will then automatically generate code from `proto/calendar.proto` via `qt_add_protobuf` / `qt_add_grpc`.
+
+**Server URL** is a placeholder in `eventcalendar.cpp`:
+- Desktop: `http://localhost:50051` (gRPC)
+- WASM: `http://localhost:8080` (REST)
+
+`SqlPlanDatabase` gains three narrow signals (`planAdded(int)`, `planUpdated(int)`, `planDeleted(int)`) emitted after each successful mutation. `PlanSyncManager` connects to these to push changes. Reference data updates use `setUnits()`/`setRoutes()` C++ methods (not QML-invokable) that do `INSERT OR REPLACE` into the local SQLite tables.
+
+### QML ↔ C++ data boundary pattern
+
+`QAbstractListModel` subclasses are **not directly iterable** in QML JavaScript. For any computation that needs to loop over all records (e.g. building a grid layout), expose a `Q_INVOKABLE` method returning `QVariantList` of `QVariantMap` instead.
+
+Established pattern — `SqlPlanDatabase::plansForRangeQML` returns each plan as a `QVariantMap` with keys: `planId`, `name`, `startDate`, `endDate`, `unitId`, `unitName`, `routeIds`. Follow the same shape for any future bulk-query methods.
+
+### Desktop import path quirk
+
+Qt generates **two** copies of `App/qmldir` when the QML module uses a static library backing target:
+- Filesystem copy in the build directory — has `prefer :/` (for AoT, not linked into binary)
+- Embedded resource copy — has `prefer :/App/` (correct, is linked)
+
+The engine finds the filesystem copy first and resolves all type URLs as `qrc:/organisms/...` etc., which don't exist in the binary — causing a silent startup failure (`objectCreated` fires with `null`).
+
+**Fix (already applied in `eventcalendar.cpp`):** `engine.addImportPath(QStringLiteral("qrc:/"))` before `engine.load()` forces the engine to search resources first, where it finds the correct qmldir.
+
+If the app silently exits on desktop after any CMake/module restructuring, this is the first thing to check.
 
 ### Known WASM quirks
 

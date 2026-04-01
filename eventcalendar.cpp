@@ -6,6 +6,7 @@
 #include <QIcon>
 
 #include "sqlplandatabase.h"
+#include "plansyncmanager.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +20,18 @@ int main(int argc, char *argv[])
     // Prepending qrc:/ ensures the resource version wins.
     engine.addImportPath(QStringLiteral("qrc:/"));
     SqlPlanDatabase planDatabase;
+
+    // PlanSyncManager mirrors local mutations to the backend.
+    // Server URL is a placeholder — update when a real backend is available.
+    // The manager fails gracefully when the server is unreachable.
+#ifndef Q_OS_WASM
+    const QUrl serverUrl(QStringLiteral("http://localhost:50051"));
+#else
+    const QUrl serverUrl(QStringLiteral("http://localhost:8080"));
+#endif
+    PlanSyncManager syncManager(&planDatabase, serverUrl);
+    syncManager.start();
+
     engine.setInitialProperties({{ "planDatabase", QVariant::fromValue(&planDatabase) }});
 
     // The QML module is backed by eventcalendar_lib (static library), which

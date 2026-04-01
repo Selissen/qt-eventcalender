@@ -27,7 +27,13 @@ public:
     ~SqlPlanDatabase();
 
     QList<Plan> plansForRange(QDate start, QDate end) const;
+    Plan planById(int id) const;
     Q_INVOKABLE QVariantList plansForRangeQML(QDate start, QDate end) const;
+
+    // Called by PlanSyncManager to push server reference data into the local DB.
+    // Not exposed to QML — uses INSERT OR REPLACE so existing rows are updated.
+    void setUnits(const QVariantList &units);
+    void setRoutes(const QVariantList &routes);
 
     Q_INVOKABLE bool addPlan(const QString &name,
                              QDate startDate, int startTimeSecs,
@@ -50,6 +56,11 @@ public:
 signals:
     void plansChanged();
     void unitFilterChanged();
+    // Narrow signals emitted after the corresponding DB mutation succeeds.
+    // Carry only the affected plan ID so PlanSyncManager can look up and push the change.
+    void planAdded(int id);
+    void planUpdated(int id);
+    void planDeleted(int id);
 
 private:
     // Returns "col IN (1,2,3)" when a unit filter is active, empty string otherwise.

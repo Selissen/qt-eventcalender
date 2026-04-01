@@ -6,13 +6,14 @@ project(eventcalendar LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Sql)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Sql Network)
 
 qt_add_library(eventcalendar_lib STATIC
     calendarutils.cpp calendarutils.h
     datetimeutils.cpp datetimeutils.h
     plan.h
     planmodel.cpp planmodel.h
+    plansyncmanager.cpp plansyncmanager.h
     sqlplandatabase.cpp sqlplandatabase.h
 )
 
@@ -43,7 +44,43 @@ target_link_libraries(eventcalendar_lib PUBLIC
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Sql
+    Qt6::Network
 )
+
+# Desktop only: Qt gRPC + Protobuf code generation from proto/calendar.proto.
+# WASM uses QNetworkAccessManager (REST/JSON) instead — the gRPC module is not
+# supported on Emscripten.
+# If Qt6::Protobuf / Qt6::Grpc are not installed, desktop sync is compiled out
+# gracefully (EC_GRPC_ENABLED is not defined, PlanSyncManager becomes a no-op).
+# Install via Qt Online Installer: qt.qt6.6110.addons.qtgrpc
+if(NOT EMSCRIPTEN)
+    find_package(Qt6 OPTIONAL_COMPONENTS Protobuf Grpc)
+
+    if(TARGET Qt6::Protobuf AND TARGET Qt6::Grpc)
+        qt_add_protobuf(calendar_proto
+            PROTO_FILES proto/calendar.proto
+            OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
+        )
+
+        qt_add_grpc(calendar_grpc CLIENT
+            PROTO_FILES proto/calendar.proto
+            OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto_gen"
+        )
+
+        target_link_libraries(eventcalendar_lib PUBLIC
+            Qt6::Protobuf
+            Qt6::Grpc
+            calendar_proto
+            calendar_grpc
+        )
+
+        target_compile_definitions(eventcalendar_lib PUBLIC EC_GRPC_ENABLED)
+        message(STATUS "[EventCalendar] Qt6::Grpc found — desktop gRPC sync enabled")
+    else()
+        message(STATUS "[EventCalendar] Qt6::Protobuf/Grpc not found — desktop gRPC sync disabled. "
+                       "Install qt.qt6.6110.addons.qtgrpc via the Qt Online Installer to enable it.")
+    endif()
+endif()
 
 qt_add_executable(eventcalendar
     eventcalendar.cpp
