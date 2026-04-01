@@ -35,6 +35,13 @@ add_eventcalendar_test(tst_sqlplandatabase
     ../plan.h
 )
 
+# ── WeekGrid ──────────────────────────────────────────────────────────────────
+add_eventcalendar_test(tst_weekgrid
+    tst_weekgrid.cpp
+    ../calendarutils.cpp
+    ../calendarutils.h
+)
+
 # ── PlanModel ─────────────────────────────────────────────────────────────────
 add_eventcalendar_test(tst_planmodel
     tst_planmodel.cpp

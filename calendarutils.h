@@ -6,6 +6,7 @@
 
 #include <QDate>
 #include <QObject>
+#include <QVariantList>
 #include <QtQml>
 
 class CalendarUtils : public QObject
@@ -30,6 +31,19 @@ public:
 
     // Returns the date one step later (7 days in week view, 1 month in month view).
     Q_INVOKABLE QDate navigateNext(QDate date, bool weekView) const;
+
+    // Builds the flat row array for WeekView from pre-fetched data.
+    //
+    // units  — QVariantList of { id: int, name: string }  (already filtered)
+    // plans  — QVariantList in plansForRangeQML() shape
+    // weekStart — first day of the displayed week
+    //
+    // Returns a QVariantList whose entries are either:
+    //   { rowType:"header", unitId, unitName }
+    //   { rowType:"plan",   unitId, slotIndex, dayPlans:[plan|null × 7] }
+    Q_INVOKABLE QVariantList buildWeekGrid(const QVariantList &units,
+                                           const QVariantList &plans,
+                                           QDate weekStart) const;
 };
 
 #endif // CALENDARUTILS_H
