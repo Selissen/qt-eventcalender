@@ -1,58 +1,92 @@
 #ifndef Q_OS_WASM
 
 #include "FlutterContainer.h"
-#include <QResizeEvent>
-#include <QTimer>
-#include <QWindow>
+#include <QDebug>
 
-FlutterContainer::FlutterContainer(QWidget* parent)
-    : QWidget(parent)
-{
-    // NativeWindow + DontCreateNativeAncestors ensure Qt gives this widget its
-    // own HWND so we can reparent the Flutter HWND into it.
-    setAttribute(Qt::WA_NativeWindow);
-    setAttribute(Qt::WA_DontCreateNativeAncestors);
-    setWindowTitle(QStringLiteral("EventCalendar — Flutter"));
-}
+FlutterContainer::FlutterContainer(QObject* parent)
+    : QObject(parent) {}
 
 bool FlutterContainer::initialize(const QString& assetsPath,
                                   const QString& icuDataPath,
                                   const QString& aotLibraryPath)
 {
-    FlutterDesktopEngineProperties props = {};
-    // toStdWString() lives only as long as the temporary; store it first.
     const std::wstring assets = assetsPath.toStdWString();
     const std::wstring icu    = icuDataPath.toStdWString();
     const std::wstring aot    = aotLibraryPath.toStdWString();
-    props.assets_path    = assets.c_str();
-    props.icu_data_path  = icu.c_str();
-    // aot_library_path is required in release builds; null is fine for debug.
+
+    FlutterDesktopEngineProperties props = {};
+    props.assets_path      = assets.c_str();
+    props.icu_data_path    = icu.c_str();
     props.aot_library_path = aot.empty() ? nullptr : aot.c_str();
 
     engine_ = FlutterDesktopEngineCreate(&props);
-    if (!engine_)
+    if (!engine_) {
+        qWarning("[Flutter] FlutterDesktopEngineCreate failed.");
         return false;
+    }
 
-    controller_ = FlutterDesktopViewControllerCreate(width(), height(), engine_);
-    if (!controller_)
+    // Initial size 0×0; resized by the caller after embedInto().
+    controller_ = FlutterDesktopViewControllerCreate(0, 0, engine_);
+    if (!controller_) {
+        qWarning("[Flutter] FlutterDesktopViewControllerCreate failed.");
+        FlutterDesktopEngineDestroy(engine_);
+        engine_ = nullptr;
         return false;
-
-    HWND hwnd = FlutterDesktopViewGetHWND(
-        FlutterDesktopViewControllerGetView(controller_));
-
-    flutter_window_   = QWindow::fromWinId(reinterpret_cast<WId>(hwnd));
-    container_widget_ = QWidget::createWindowContainer(flutter_window_, this);
-    container_widget_->setGeometry(0, 0, width(), height());
+    }
 
     // Drive Flutter's message loop from Qt's main thread at ~60 fps.
-    auto* timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, [this]() {
+    loop_timer_ = new QTimer(this);
+    connect(loop_timer_, &QTimer::timeout, this, [this]() {
         if (engine_)
             FlutterDesktopEngineProcessMessages(engine_);
     });
-    timer->start(16);
+    loop_timer_->start(16);
 
     return true;
+}
+
+bool FlutterContainer::embedInto(HWND parentHwnd, int w, int h)
+{
+    HWND hwnd = flutterHwnd();
+    if (!hwnd || !parentHwnd)
+        return false;
+
+    // Convert the Flutter top-level window into a WS_CHILD window so it
+    // renders inside the parent (the QQuickWindow's HWND).
+    LONG style = ::GetWindowLong(hwnd, GWL_STYLE);
+    style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_OVERLAPPEDWINDOW))
+            | WS_CHILD;
+    ::SetWindowLong(hwnd, GWL_STYLE, style);
+    ::SetParent(hwnd, parentHwnd);
+    ::MoveWindow(hwnd, 0, 0, w, h, TRUE);
+    // Start hidden; NavigationBridge calls showEmbedded() on first navigation.
+    ::ShowWindow(hwnd, SW_HIDE);
+    embedded_visible_ = false;
+
+    return true;
+}
+
+void FlutterContainer::showEmbedded()
+{
+    if (HWND hwnd = flutterHwnd()) {
+        ::ShowWindow(hwnd, SW_SHOW);
+        ::SetFocus(hwnd);
+        embedded_visible_ = true;
+    }
+}
+
+void FlutterContainer::hideEmbedded()
+{
+    if (HWND hwnd = flutterHwnd()) {
+        ::ShowWindow(hwnd, SW_HIDE);
+        embedded_visible_ = false;
+    }
+}
+
+void FlutterContainer::resizeEmbedded(int w, int h)
+{
+    if (HWND hwnd = flutterHwnd())
+        ::MoveWindow(hwnd, 0, 0, w, h, TRUE);
 }
 
 HWND FlutterContainer::flutterHwnd() const
@@ -63,20 +97,19 @@ HWND FlutterContainer::flutterHwnd() const
         FlutterDesktopViewControllerGetView(controller_));
 }
 
-void FlutterContainer::resizeEvent(QResizeEvent* event)
+FlutterDesktopMessengerRef FlutterContainer::messenger() const
 {
-    QWidget::resizeEvent(event);
-    if (container_widget_)
-        container_widget_->setGeometry(0, 0,
-            event->size().width(), event->size().height());
+    return engine_ ? FlutterDesktopEngineGetMessenger(engine_) : nullptr;
 }
 
 FlutterContainer::~FlutterContainer()
 {
+    if (loop_timer_)
+        loop_timer_->stop();
     if (controller_)
         FlutterDesktopViewControllerDestroy(controller_);
-    if (engine_)
-        FlutterDesktopEngineDestroy(engine_);
+    // engine_ is owned by the controller after ViewControllerCreate;
+    // destroying the controller also destroys the engine.
 }
 
 #endif // Q_OS_WASM

@@ -102,6 +102,13 @@ ApplicationWindow {
                 font.bold: window.sidebarOpen
                 onClicked: window.sidebarOpen = !window.sidebarOpen
             }
+
+            // Flutter toggle — only visible when the embedding is active.
+            ToolButton {
+                visible: typeof navBridge !== "undefined"
+                text: qsTr("Flutter")
+                onClicked: navBridge.navigateTo("/widget-catalog")
+            }
         }
     }
 

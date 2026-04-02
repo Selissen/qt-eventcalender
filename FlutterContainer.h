@@ -1,50 +1,53 @@
 #pragma once
 #ifndef Q_OS_WASM
 
-#include <QWidget>
-#include <QWindow>
-
-// Flutter Windows Embedder public API.
-// Headers live flat in the Flutter engine artifact cache (no flutter/ subdir).
-// Include path is set via target_include_directories in CMakeLists.txt.
+#include <QObject>
+#include <QTimer>
+#include <windows.h>
 #include <flutter_windows.h>
+#include <flutter_messenger.h>
 
-/// Hosts a Flutter view inside a Qt widget hierarchy.
+/// Manages the Flutter Windows engine and embeds its view into a native
+/// Win32 parent window.
 ///
-/// Usage:
-///   FlutterContainer* c = new FlutterContainer(parentWidget);
-///   c->initialize(assetsPath, icuDataPath);
-///   c->show();
-///
-/// The FlutterContainer drives Flutter's message loop from Qt's event loop via
-/// a QTimer ticking at ~60 fps.  Resize events are forwarded automatically.
-class FlutterContainer : public QWidget {
+/// Lifecycle:
+///   1. Construct and call initialize() with asset/icu/aot paths.
+///   2. Call embedInto(parentHwnd, w, h) to reparent Flutter's HWND as a
+///      child of an existing Win32 window (e.g. the QQuickWindow).
+///   3. Call showEmbedded() / hideEmbedded() to toggle visibility.
+///   4. Call resizeEmbedded(w, h) whenever the parent window resizes.
+///   5. Use messenger() + FlutterDesktopMessengerSend to send messages to
+///      Flutter (e.g. navigation channel).
+class FlutterContainer : public QObject {
     Q_OBJECT
 public:
-    explicit FlutterContainer(QWidget* parent = nullptr);
+    explicit FlutterContainer(QObject* parent = nullptr);
     ~FlutterContainer() override;
 
-    /// Initialise the Flutter engine.
-    /// @param assetsPath      Absolute path to the flutter_assets directory.
-    /// @param icuDataPath     Absolute path to icudtl.dat.
-    /// @param aotLibraryPath  Absolute path to app.so (required for release builds; empty for debug).
-    /// @returns true on success, false if the engine or controller failed to create.
     bool initialize(const QString& assetsPath,
                     const QString& icuDataPath,
                     const QString& aotLibraryPath = {});
 
-    /// Returns the raw Win32 HWND of the Flutter view (needed for focus routing).
-    /// Returns nullptr before initialize() is called.
+    /// Reparent the Flutter view HWND as a Win32 child of parentHwnd, sized
+    /// to (w, h). Starts hidden — call showEmbedded() to make it visible.
+    bool embedInto(HWND parentHwnd, int w, int h);
+
+    void showEmbedded();
+    void hideEmbedded();
+    bool isEmbeddedVisible() const { return embedded_visible_; }
+
+    void resizeEmbedded(int w, int h);
+
     HWND flutterHwnd() const;
 
-protected:
-    void resizeEvent(QResizeEvent* event) override;
+    /// Messenger for sending to Flutter channels (e.g. FlutterDesktopMessengerSend).
+    FlutterDesktopMessengerRef messenger() const;
 
 private:
-    FlutterDesktopEngineRef     engine_     = nullptr;
-    FlutterDesktopViewControllerRef controller_ = nullptr;
-    QWindow*  flutter_window_    = nullptr;
-    QWidget*  container_widget_  = nullptr;
+    FlutterDesktopEngineRef          engine_     = nullptr;
+    FlutterDesktopViewControllerRef  controller_ = nullptr;
+    QTimer*                          loop_timer_ = nullptr;
+    bool                             embedded_visible_ = false;
 };
 
 #endif // Q_OS_WASM

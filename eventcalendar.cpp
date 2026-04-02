@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
 #ifdef EC_FLUTTER_EMBED_ENABLED
-#  include <QApplication>   // QWidget support required for FlutterContainer
-#  include <windows.h>      // SetProcessDpiAwarenessContext
+#  include <QApplication>
+#  include <QQuickWindow>
+#  include <windows.h>
 #  include "FlutterContainer.h"
 #  include "FlutterFocusFilter.h"
 #  include "NavigationBridge.h"
@@ -12,7 +13,9 @@
 #endif
 
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QIcon>
+#include <QFile>
 #include <QDir>
 #include <QCoreApplication>
 
@@ -48,7 +51,6 @@ int main(int argc, char *argv[])
 {
 #ifdef EC_FLUTTER_EMBED_ENABLED
     // Prevent double-scaling: Qt and Flutter each apply DPI scaling independently.
-    // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 lets Windows manage it once.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
     QApplication app(argc, argv);
@@ -65,9 +67,6 @@ int main(int argc, char *argv[])
     engine.addImportPath(QStringLiteral("qrc:/"));
     SqlPlanDatabase planDatabase;
 
-    // PlanSyncManager mirrors local mutations to the backend.
-    // Server URL is a placeholder — update when a real backend is available.
-    // The manager fails gracefully when the server is unreachable.
 #ifndef Q_OS_WASM
     const QUrl serverUrl(QStringLiteral("http://localhost:50051"));
 #else
@@ -78,58 +77,79 @@ int main(int argc, char *argv[])
 
     engine.setInitialProperties({{ "planDatabase", QVariant::fromValue(&planDatabase) }});
 
-    // The QML module is backed by eventcalendar_lib (static library), which
-    // embeds all QML resources under the "/App/" prefix. This applies to both
-    // desktop and WASM — the prefix-"/" copy that Qt generates for AoT is a
-    // build artifact only and is not linked into the final binary.
-    const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
-            QCoreApplication::exit(-1);
-    }, Qt::QueuedConnection);
-    engine.load(url);
-
 #ifdef EC_FLUTTER_EMBED_ENABLED
-    // ── Flutter embedding (Phase 0 validation) ────────────────────────────────
-    // The FlutterContainer is shown as a separate top-level window for Phase 0
-    // validation.  In Phase 1+ it will be integrated into the QML window hierarchy
-    // via a platform-native container.
-    //
-    // flutter/app must be built first:
-    //   cd flutter/app && flutter build windows --release
-    //
-    const QString exeDir = QCoreApplication::applicationDirPath();
+    // ── Phase 1: Flutter embedded inside the QML window ──────────────────────
+    const QString exeDir    = QCoreApplication::applicationDirPath();
     const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
     const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
-    const QString aotPath    = exeDir + QStringLiteral("/app.so"); // release AOT snapshot
+    const QString aotPath    = exeDir + QStringLiteral("/app.so");
 
-    FlutterContainer* flutterContainer = nullptr;
+    FlutterContainer* flutter   = nullptr;
     NavigationBridge* navBridge = new NavigationBridge(&app);
 
     if (QDir(assetsPath).exists() && QFile::exists(icuPath)) {
-        flutterContainer = new FlutterContainer();
-        flutterContainer->resize(1024, 768);
-        // Pass aotPath only when the file exists (release); debug builds leave it empty.
+        flutter = new FlutterContainer(&app);
         const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
-        if (flutterContainer->initialize(assetsPath, icuPath, resolvedAot)) {
-            app.installNativeEventFilter(
-                new FlutterFocusFilter(flutterContainer->flutterHwnd()));
-            flutterContainer->show();
+
+        if (!flutter->initialize(assetsPath, icuPath, resolvedAot)) {
+            qWarning("[Flutter] initialize() failed — running Qt-only.");
+            delete flutter;
+            flutter = nullptr;
         } else {
-            qWarning("[Flutter] FlutterContainer::initialize() failed — "
-                     "check that flutter_assets/ and icudtl.dat are next to the executable.");
-            delete flutterContainer;
-            flutterContainer = nullptr;
+            navBridge->setFlutterContainer(flutter);
+            app.installNativeEventFilter(new FlutterFocusFilter(flutter));
         }
     } else {
-        qWarning("[Flutter] flutter_assets/ or icudtl.dat not found next to executable. "
-                 "Run:  cd flutter/app && flutter build windows --release  "
-                 "then copy the build output alongside the Qt executable.");
+        qWarning("[Flutter] flutter_assets/ or icudtl.dat missing next to executable. "
+                 "Run: cd flutter/app && flutter build windows --release");
     }
 
-    Q_UNUSED(navBridge)
+    // Expose navBridge to QML so the toolbar button can call navigateTo().
+    // Set before engine.load() so it is available from the first frame.
+    engine.rootContext()->setContextProperty(QStringLiteral("navBridge"), navBridge);
 #endif // EC_FLUTTER_EMBED_ENABLED
+
+    const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                     &app, [&](QObject* obj, const QUrl& objUrl) {
+        if (!obj && url == objUrl) {
+            QCoreApplication::exit(-1);
+            return;
+        }
+
+#ifdef EC_FLUTTER_EMBED_ENABLED
+        if (!flutter || !obj) return;
+
+        // The QML root is an ApplicationWindow (subclass of QQuickWindow).
+        auto* qmlWindow = qobject_cast<QQuickWindow*>(obj);
+        if (!qmlWindow) return;
+
+        const HWND qmlHwnd = reinterpret_cast<HWND>(qmlWindow->winId());
+
+        // Embed the Flutter view as a native Win32 child of the QML window.
+        if (!flutter->embedInto(qmlHwnd, qmlWindow->width(), qmlWindow->height())) {
+            qWarning("[Flutter] embedInto() failed — Flutter will not be visible.");
+            return;
+        }
+
+        // Keep Flutter sized to the QML window on resize.
+        QObject::connect(qmlWindow, &QQuickWindow::widthChanged, flutter,
+                         [flutter, qmlWindow]() {
+            flutter->resizeEmbedded(qmlWindow->width(), qmlWindow->height());
+        });
+        QObject::connect(qmlWindow, &QQuickWindow::heightChanged, flutter,
+                         [flutter, qmlWindow]() {
+            flutter->resizeEmbedded(qmlWindow->width(), qmlWindow->height());
+        });
+
+        // Register the Qt←Flutter back channel so Flutter can return to Qt.
+        navBridge->listenForBackNavigation(flutter->messenger());
+        qDebug() << "[Flutter] Embedded — toolbar button is active.";
+#endif // EC_FLUTTER_EMBED_ENABLED
+    }, Qt::QueuedConnection);
+
+    engine.load(url);
+
 
     return app.exec();
 }

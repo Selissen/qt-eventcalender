@@ -4,32 +4,21 @@
 #include <QAbstractNativeEventFilter>
 #include <windows.h>
 
-/// Ensures keyboard focus is forwarded to the Flutter HWND when Qt receives
-/// WM_SETFOCUS.  Without this, Qt intercepts focus and Flutter views become
-/// unresponsive to keyboard input.
-///
-/// Install after FlutterContainer::initialize():
-///   qApp->installNativeEventFilter(
-///       new FlutterFocusFilter(container->flutterHwnd()));
+class FlutterContainer;
+
+/// Forwards WM_SETFOCUS to the Flutter child HWND when the Flutter view
+/// is visible, preventing Qt from stealing keyboard focus away from Flutter.
 class FlutterFocusFilter : public QAbstractNativeEventFilter {
 public:
-    explicit FlutterFocusFilter(HWND flutterHwnd)
-        : flutter_hwnd_(flutterHwnd) {}
+    explicit FlutterFocusFilter(FlutterContainer* container)
+        : container_(container) {}
 
     bool nativeEventFilter(const QByteArray& eventType,
                            void* message,
-                           qintptr* /*result*/) override
-    {
-        if (eventType == "windows_generic_MSG") {
-            const auto* msg = static_cast<const MSG*>(message);
-            if (msg->message == WM_SETFOCUS && flutter_hwnd_)
-                SetFocus(flutter_hwnd_);
-        }
-        return false; // never consume the event
-    }
+                           qintptr* /*result*/) override;
 
 private:
-    HWND flutter_hwnd_;
+    FlutterContainer* container_;
 };
 
 #endif // Q_OS_WASM

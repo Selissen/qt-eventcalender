@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Qt 6 Quick Controls 2 (Material theme) calendar app. Plans (events) are stored in SQLite via `QSqlDatabase`. The app targets both desktop (Windows/macOS) and WebAssembly.
 
+A parallel Flutter migration is underway using the **Strangler Fig pattern** (see `FLUTTER.md`). Phase 0 (embedding validated) and Phase 1 (embedded inside Qt window + navigation bridge) are complete. The Flutter layer lives under `flutter/` and is only active on desktop when `EC_FLUTTER_EMBED_ENABLED=ON`.
+
 ## Verification requirements
 
 Any change that touches `CMakeLists.txt`, `eventcalendar.cpp`, C++ headers/sources registered with `QML_ELEMENT`/`QML_SINGLETON`/`QML_UNCREATABLE`, or QML files **must be verified on both targets before being considered done**:
@@ -13,7 +15,11 @@ Any change that touches `CMakeLists.txt`, `eventcalendar.cpp`, C++ headers/sourc
 1. **Desktop** — build in Qt Creator with the MinGW kit and confirm the app launches without errors.
 2. **WASM** — run `python scripts/check_wasm.py` (builds + headless smoke test) and confirm it exits 0.
 
-Do not mark a task complete or propose a commit until both checks pass (or explicitly confirm with the user that only one target is relevant).
+Any change that touches `flutter/`, `FlutterContainer.*`, `NavigationBridge.*`, or `FlutterFocusFilter.*` must also:
+
+3. **Flutter** — run `python scripts/check_flutter.py` (builds Flutter + syncs artifacts) and confirm it exits 0, then rebuild the Qt desktop target and confirm the embedding still works.
+
+Do not mark a task complete or propose a commit until all relevant checks pass (or explicitly confirm with the user that only a subset of targets is relevant).
 
 ## Build system
 
@@ -54,6 +60,23 @@ python scripts/check_wasm.py
 ```
 
 `test_wasm.py` starts a local HTTP server on port 18765, loads the app in headless Chromium, waits for the `<canvas>` element Qt renders into, and reports any console errors. It exits 0 on pass, 1 on failure.
+
+### Flutter build and artifact sync
+
+The Flutter app must be built separately and its artifacts copied next to the Qt executable before the embedding activates:
+
+```bash
+# Build Flutter and sync artifacts in one step:
+python scripts/check_flutter.py
+
+# Or individually:
+python scripts/build_flutter.py          # flutter build windows --release
+python scripts/sync_flutter_artifacts.py # copies flutter_assets/, icudtl.dat, app.so, flutter_windows.dll
+```
+
+`sync_flutter_artifacts.py` auto-detects the most recently modified Desktop Qt build directory under `build/`. Pass `--build-dir PATH` to override.
+
+The Flutter engine artifacts (headers + import lib) are at `X:/Flutter/bin/cache/artifacts/engine/windows-x64/`. CMake reads this path from the `FLUTTER_ENGINE_DIR` cache variable (defaulted in `CMakeLists.txt`).
 
 ### Run desktop tests
 
@@ -109,6 +132,8 @@ All QML imports `App` and uses `CalendarUtils` (singleton) and `DateTimeUtils` (
 
 `SqlPlanDatabase` is instantiated once in `main()` and injected as a required property on the root QML object. All views receive it through property binding.
 
+`NavigationBridge` is injected as a QML context property (`navBridge`) before `engine.load()` when `EC_FLUTTER_EMBED_ENABLED` is defined. QML calls `navBridge.navigateTo("/route")` to switch to a Flutter screen.
+
 ### WASM persistence
 
 On WASM, `SqlPlanDatabase` stores the SQLite database in `QStandardPaths::AppDataLocation`, which maps to IndexedDB (persistent across page reloads). On desktop it uses `:memory:`. Schema uses `CREATE TABLE IF NOT EXISTS` and `INSERT OR IGNORE` so re-opening an existing WASM database is safe.
@@ -152,6 +177,64 @@ The engine finds the filesystem copy first and resolves all type URLs as `qrc:/o
 **Fix (already applied in `eventcalendar.cpp`):** `engine.addImportPath(QStringLiteral("qrc:/"))` before `engine.load()` forces the engine to search resources first, where it finds the correct qmldir.
 
 If the app silently exits on desktop after any CMake/module restructuring, this is the first thing to check.
+
+### Flutter embedding layer
+
+The Flutter embedding is **desktop-only** and guarded by `#ifdef EC_FLUTTER_EMBED_ENABLED`. WASM builds are unaffected.
+
+#### CMake options
+
+| Option | Default | Description |
+|---|---|---|
+| `EC_FLUTTER_EMBED_ENABLED` | `ON` | Enable Flutter embedding (desktop only) |
+| `FLUTTER_ENGINE_DIR` | `X:/Flutter/bin/cache/artifacts/engine/windows-x64` | Path to Flutter Windows engine artifacts |
+
+#### C++ embedding classes
+
+| File | Role |
+|---|---|
+| `FlutterContainer` | Owns the Flutter engine + view controller. Embeds Flutter's HWND as a Win32 child of the `QQuickWindow`. Exposes `embedInto()`, `showEmbedded()`, `hideEmbedded()`, `resizeEmbedded()`, `messenger()`. |
+| `FlutterFocusFilter` | `QAbstractNativeEventFilter` — forwards `WM_SETFOCUS` to Flutter's HWND only when Flutter is visible. |
+| `NavigationBridge` | `QObject` exposed to QML as `navBridge`. `navigateTo(route)` sends the route via `FlutterDesktopMessengerSend` on the `"navigation"` channel and calls `showEmbedded()`. `navigateToQt()` calls `hideEmbedded()`. `listenForBackNavigation()` registers a callback on `"navigation/back"` so Flutter can return to Qt. |
+
+#### Navigation protocol
+
+| Direction | Channel | Encoding | Trigger |
+|---|---|---|---|
+| Qt → Flutter | `"navigation"` | Raw UTF-8 route string | `navBridge.navigateTo("/route")` from QML or C++ |
+| Flutter → Qt | `"navigation/back"` | Any string (ignored) | `backChannel.send('back')` from Dart |
+
+`navBridge` is set as a QML context property before `engine.load()`, so any QML file can call `navBridge.navigateTo(route)` directly. Guard with `typeof navBridge !== "undefined"` for WASM compatibility.
+
+#### Flutter monorepo layout
+
+```
+flutter/
+  app/                        # Flutter entry point (main.dart, go_router, nav channel)
+  packages/
+    core/                     # gRPC client factory, CalendarServiceClient provider,
+    │                         #   generated Dart proto stubs (proto/calendar.pb*.dart)
+    design_system/            # AppTheme, AppButton, AppTextField, AppSidebar,
+                              #   LoadingView, ErrorView, EmptyView
+```
+
+Proto stubs in `flutter/packages/core/lib/src/proto/` are generated from `proto/calendar.proto` via:
+```bash
+protoc --dart_out=grpc:flutter/packages/core/lib/src/proto \
+       --proto_path=proto \
+       --plugin=protoc-gen-dart="C:/Users/roald/AppData/Local/Pub/Cache/bin/protoc-gen-dart.bat" \
+       calendar.proto
+```
+Re-run whenever `proto/calendar.proto` changes.
+
+#### Strangler Fig phase status
+
+| Phase | Status | Description |
+|---|---|---|
+| 0 | ✅ Done | Embedding validated — Flutter engine initialises inside Qt window |
+| 1 | ✅ Done | Navigation bridge wired — toolbar button + back channel work |
+| 2 | Pending | Migrate screens one by one (see `FLUTTER.md` for priority order) |
+| 3 | Pending | Flutter becomes navigation owner; Qt shell retired |
 
 ### Known WASM quirks
 

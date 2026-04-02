@@ -162,6 +162,7 @@ target_link_libraries(eventcalendar PRIVATE eventcalendar_lib eventcalendar_libp
 if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
     target_sources(eventcalendar PRIVATE
         FlutterContainer.cpp
+        FlutterFocusFilter.cpp
         NavigationBridge.cpp
     )
     # Explicit include so moc (autogen step) can resolve flutter_windows.h
