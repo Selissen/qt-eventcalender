@@ -1,0 +1,29 @@
+name: app
+description: "Flutter shell for the eventcalendar app — embedded inside the Qt host via Win32 HWND."
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  go_router: ^13.0.0
+  core:
+    path: ../packages/core
+  design_system:
+    path: ../packages/design_system
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^2.4.0
+  build_runner: ^2.4.9
+
+flutter:
+  uses-material-design: true

@@ -1,9 +1,20 @@
 // Copyright (C) 2021 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
-#include <QGuiApplication>
+#ifdef EC_FLUTTER_EMBED_ENABLED
+#  include <QApplication>   // QWidget support required for FlutterContainer
+#  include <windows.h>      // SetProcessDpiAwarenessContext
+#  include "FlutterContainer.h"
+#  include "FlutterFocusFilter.h"
+#  include "NavigationBridge.h"
+#else
+#  include <QGuiApplication>
+#endif
+
 #include <QQmlApplicationEngine>
 #include <QIcon>
+#include <QDir>
+#include <QCoreApplication>
 
 #include "sqlplandatabase.h"
 #include "plansyncmanager.h"
@@ -35,7 +46,15 @@ __attribute__((constructor(200))) static void installFilteredMessageHandler()
 
 int main(int argc, char *argv[])
 {
+#ifdef EC_FLUTTER_EMBED_ENABLED
+    // Prevent double-scaling: Qt and Flutter each apply DPI scaling independently.
+    // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 lets Windows manage it once.
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
+    QApplication app(argc, argv);
+#else
     QGuiApplication app(argc, argv);
+#endif
 
     QIcon::setThemeName("eventcalendar");
 
@@ -70,6 +89,47 @@ int main(int argc, char *argv[])
             QCoreApplication::exit(-1);
     }, Qt::QueuedConnection);
     engine.load(url);
+
+#ifdef EC_FLUTTER_EMBED_ENABLED
+    // ── Flutter embedding (Phase 0 validation) ────────────────────────────────
+    // The FlutterContainer is shown as a separate top-level window for Phase 0
+    // validation.  In Phase 1+ it will be integrated into the QML window hierarchy
+    // via a platform-native container.
+    //
+    // flutter/app must be built first:
+    //   cd flutter/app && flutter build windows --release
+    //
+    const QString exeDir = QCoreApplication::applicationDirPath();
+    const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
+    const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
+    const QString aotPath    = exeDir + QStringLiteral("/app.so"); // release AOT snapshot
+
+    FlutterContainer* flutterContainer = nullptr;
+    NavigationBridge* navBridge = new NavigationBridge(&app);
+
+    if (QDir(assetsPath).exists() && QFile::exists(icuPath)) {
+        flutterContainer = new FlutterContainer();
+        flutterContainer->resize(1024, 768);
+        // Pass aotPath only when the file exists (release); debug builds leave it empty.
+        const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
+        if (flutterContainer->initialize(assetsPath, icuPath, resolvedAot)) {
+            app.installNativeEventFilter(
+                new FlutterFocusFilter(flutterContainer->flutterHwnd()));
+            flutterContainer->show();
+        } else {
+            qWarning("[Flutter] FlutterContainer::initialize() failed — "
+                     "check that flutter_assets/ and icudtl.dat are next to the executable.");
+            delete flutterContainer;
+            flutterContainer = nullptr;
+        }
+    } else {
+        qWarning("[Flutter] flutter_assets/ or icudtl.dat not found next to executable. "
+                 "Run:  cd flutter/app && flutter build windows --release  "
+                 "then copy the build output alongside the Qt executable.");
+    }
+
+    Q_UNUSED(navBridge)
+#endif // EC_FLUTTER_EMBED_ENABLED
 
     return app.exec();
 }

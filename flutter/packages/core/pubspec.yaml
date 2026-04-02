@@ -1,0 +1,24 @@
+name: core
+description: gRPC stubs, REST clients, shared models and Riverpod providers for the eventcalendar app.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  grpc: ^3.2.4
+  protobuf: ^3.1.0
+  dio: ^5.4.0
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  riverpod_generator: ^2.4.0
+  build_runner: ^2.4.9
+  protoc_plugin: ^21.1.2

@@ -1,0 +1,16 @@
+name: design_system
+description: Shared widgets, tokens, and theme matching the Qt app's visual language.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

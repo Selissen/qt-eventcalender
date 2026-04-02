@@ -7,6 +7,11 @@ project(eventcalendar LANGUAGES CXX)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Sql Network)
+# Widgets is needed by FlutterContainer (QWidget) when Flutter embedding is enabled.
+# Found separately so the base build stays widget-free on WASM.
+if(NOT EMSCRIPTEN)
+    find_package(Qt6 OPTIONAL_COMPONENTS Widgets)
+endif()
 
 qt_add_library(eventcalendar_lib STATIC
     calendarutils.cpp calendarutils.h
@@ -101,6 +106,46 @@ else()
                    "Install qt.qt6.6110.addons.qtgrpc via the Qt Online Installer to enable gRPC.")
 endif()
 
+# ── Flutter Windows Embedding (desktop only, opt-in) ─────────────────────────
+#
+# Enable with:  cmake -DEC_FLUTTER_EMBED_ENABLED=ON \
+#                     -DFLUTTER_ENGINE_DIR="X:/Flutter/bin/cache/artifacts/engine/windows-x64" ..
+#
+# FLUTTER_ENGINE_DIR must contain flutter_windows.dll, flutter_windows.dll.lib,
+# and the flutter/ header sub-directory produced by the Flutter SDK.
+# After enabling, also build the Flutter app:
+#   cd flutter/app && flutter build windows --release
+# and copy the build output next to the Qt executable (cmake install does this).
+#
+if(NOT EMSCRIPTEN)
+    option(EC_FLUTTER_EMBED_ENABLED
+        "Embed Flutter inside the Qt shell via Win32 HWND hosting" ON)
+
+    # Default to the Flutter SDK engine artifacts; override with -DFLUTTER_ENGINE_DIR=...
+    if(NOT DEFINED FLUTTER_ENGINE_DIR)
+        set(FLUTTER_ENGINE_DIR
+            "X:/Flutter/bin/cache/artifacts/engine/windows-x64"
+            CACHE PATH "Path to Flutter Windows engine artifacts (contains flutter_windows.dll)")
+    endif()
+
+    if(EC_FLUTTER_EMBED_ENABLED)
+        if(NOT EXISTS "${FLUTTER_ENGINE_DIR}/flutter_windows.dll")
+            message(FATAL_ERROR
+                "[EventCalendar] FLUTTER_ENGINE_DIR must point to a directory "
+                "containing flutter_windows.dll "
+                "(e.g. X:/Flutter/bin/cache/artifacts/engine/windows-x64).")
+        endif()
+
+        add_library(flutter_windows SHARED IMPORTED)
+        set_target_properties(flutter_windows PROPERTIES
+            IMPORTED_LOCATION     "${FLUTTER_ENGINE_DIR}/flutter_windows.dll"
+            IMPORTED_IMPLIB       "${FLUTTER_ENGINE_DIR}/flutter_windows.dll.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${FLUTTER_ENGINE_DIR}"
+        )
+        message(STATUS "[EventCalendar] Flutter embedding enabled — engine: ${FLUTTER_ENGINE_DIR}")
+    endif()
+endif()
+
 qt_add_executable(eventcalendar
     eventcalendar.cpp
 )
@@ -113,6 +158,41 @@ if(NOT EMSCRIPTEN)
 endif()
 
 target_link_libraries(eventcalendar PRIVATE eventcalendar_lib eventcalendar_libplugin)
+
+if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
+    target_sources(eventcalendar PRIVATE
+        FlutterContainer.cpp
+        NavigationBridge.cpp
+    )
+    # Explicit include so moc (autogen step) can resolve flutter_windows.h
+    # before the imported-target INTERFACE propagates.
+    target_include_directories(eventcalendar PRIVATE "${FLUTTER_ENGINE_DIR}")
+    target_link_libraries(eventcalendar PRIVATE flutter_windows Qt6::Widgets)
+    target_compile_definitions(eventcalendar PRIVATE EC_FLUTTER_EMBED_ENABLED)
+
+    # Copy flutter_windows.dll and the Flutter app build artifacts next to the
+    # executable at install time.  Run `flutter build windows --release` inside
+    # flutter/app first, then cmake --install.
+    set(FLUTTER_APP_RELEASE
+        "${CMAKE_CURRENT_SOURCE_DIR}/flutter/app/build/windows/x64/runner/Release")
+    install(FILES "${FLUTTER_ENGINE_DIR}/flutter_windows.dll"
+            DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(EXISTS "${FLUTTER_APP_RELEASE}")
+        install(DIRECTORY "${FLUTTER_APP_RELEASE}/"
+                DESTINATION ${CMAKE_INSTALL_BINDIR}
+                FILES_MATCHING
+                    PATTERN "*.dll"
+                    PATTERN "flutter_assets" EXCLUDE
+                    PATTERN "app.so" EXCLUDE
+        )
+        install(DIRECTORY "${FLUTTER_APP_RELEASE}/flutter_assets"
+                DESTINATION ${CMAKE_INSTALL_BINDIR}/flutter_assets)
+        install(FILES
+                    "${FLUTTER_APP_RELEASE}/icudtl.dat"
+                    "${FLUTTER_APP_RELEASE}/app.so"   # AOT snapshot (release)
+                DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif()
+endif()
 
 qt_import_qml_plugins(eventcalendar)
 
