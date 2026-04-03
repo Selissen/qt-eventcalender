@@ -15,7 +15,7 @@
 // that #include <flutter_windows.h> inside ComponentBridge.h resolves here.
 #include "flutter_stub.h"
 
-#include "../../embedding/ComponentBridge.h"
+#include "../../QtFlutterEmbedding/ComponentBridge.h"
 
 class TstComponentBridge : public QObject {
     Q_OBJECT

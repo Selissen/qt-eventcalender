@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QSet>
+#include <QStringList>
 #include <QVariantMap>
 #include <flutter_messenger.h>
 
@@ -14,6 +16,9 @@ class QQuickItem;
 /// Call setFlutterContainer() once the Flutter engine is initialised and
 /// embedded, and setFlutterView() once the FlutterView QML item exists.
 ///
+/// Register Flutter-owned routes with setFlutterRoutes() before the first
+/// navigateTo() call so the bridge knows which routes to hand off to Flutter.
+///
 /// navigateTo() shows the FlutterView and sends the route to Flutter's
 /// "navigation" BasicMessageChannel so go_router can push the correct screen.
 /// navigateToQt() hides the FlutterView and returns focus to QML.
@@ -23,6 +28,11 @@ public:
     explicit NavigationBridge(QObject* parent = nullptr);
 
     void setFlutterContainer(FlutterContainer* container);
+
+    /// Set the routes that should be handled by Flutter (e.g. "/plans").
+    /// Call before the first navigateTo(). Routes not in this list are treated
+    /// as Qt-owned and will not trigger a Flutter handoff.
+    void setFlutterRoutes(const QStringList& routes);
 
     /// Called by FlutterView when its bridge property is set.
     void setFlutterView(QQuickItem* view);
@@ -54,6 +64,7 @@ private:
     // use-after-free when either object outlives the other.
     QPointer<FlutterContainer> flutter_;
     QPointer<QQuickItem>       flutterView_;
+    QSet<QString>              flutterRoutes_;
 };
 
 #endif // Q_OS_WASM

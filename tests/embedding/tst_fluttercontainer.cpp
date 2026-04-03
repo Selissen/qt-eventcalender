@@ -11,7 +11,7 @@
 
 #include "flutter_stub.h"
 
-#include "../../embedding/FlutterContainer.h"
+#include "../../QtFlutterEmbedding/FlutterContainer.h"
 
 class TstFlutterContainer : public QObject {
     Q_OBJECT

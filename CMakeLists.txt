@@ -149,6 +149,9 @@ if(NOT EMSCRIPTEN)
             IMPORTED_IMPLIB       "${FLUTTER_ENGINE_DIR}/flutter_windows.dll.lib"
             INTERFACE_INCLUDE_DIRECTORIES "${FLUTTER_ENGINE_DIR}"
         )
+
+        add_subdirectory(QtFlutterEmbedding)
+
         message(STATUS "[EventCalendar] Flutter embedding enabled — engine: ${FLUTTER_ENGINE_DIR}")
     endif()
 endif()
@@ -167,24 +170,18 @@ endif()
 target_link_libraries(eventcalendar PRIVATE eventcalendar_lib eventcalendar_libplugin)
 
 if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
+    # App-specific embedding: only FlutterMapItem stays in embedding/.
+    # All generic classes are in QtFlutterEmbedding::Core.
     target_sources(eventcalendar PRIVATE
-        embedding/FlutterContainer.cpp
-        embedding/FlutterFocusFilter.cpp
-        embedding/FlutterView.cpp
-        embedding/FlutterWidgetProxy.cpp
-        embedding/FlutterComponentView.cpp
         embedding/FlutterMapItem.cpp
-        embedding/ComponentBridge.cpp
-        embedding/ComponentEngineFactory.cpp
-        embedding/NavigationBridge.cpp
+        embedding/FlutterMapItem.h
     )
-    # Explicit include so moc (autogen step) can resolve flutter_windows.h
-    # before the imported-target INTERFACE propagates.
+    # embedding/ for FlutterMapItem.h and flutter_constants.h.
+    # QtFlutterEmbedding::Core PUBLIC includes propagate the rest.
     target_include_directories(eventcalendar PRIVATE
-        "${FLUTTER_ENGINE_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/embedding"
     )
-    target_link_libraries(eventcalendar PRIVATE flutter_windows Qt6::Widgets)
+    target_link_libraries(eventcalendar PRIVATE QtFlutterEmbedding::Core)
     target_compile_definitions(eventcalendar PRIVATE EC_FLUTTER_EMBED_ENABLED)
 
     # Copy flutter_windows.dll and the Flutter app build artifacts next to the

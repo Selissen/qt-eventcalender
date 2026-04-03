@@ -100,6 +100,8 @@ int main(int argc, char *argv[])
             flutter = nullptr;
         } else {
             navBridge->setFlutterContainer(flutter);
+            navBridge->setFlutterRoutes({ QStringLiteral("/plans"),
+                                          QStringLiteral("/widget-catalog") });
             app.installNativeEventFilter(new FlutterFocusFilter(flutter));
         }
     } else {

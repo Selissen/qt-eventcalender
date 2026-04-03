@@ -11,8 +11,8 @@
 
 #include "flutter_stub.h"
 
-#include "../../embedding/NavigationBridge.h"
-#include "../../embedding/FlutterContainer.h"
+#include "../../QtFlutterEmbedding/NavigationBridge.h"
+#include "../../QtFlutterEmbedding/FlutterContainer.h"
 
 class TstNavigationBridge : public QObject {
     Q_OBJECT

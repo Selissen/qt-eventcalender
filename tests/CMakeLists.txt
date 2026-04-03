@@ -74,9 +74,10 @@ if(NOT EMSCRIPTEN)
     # Stub headers shadow the real Flutter engine headers; must be listed
     # BEFORE any path that contains the real flutter_windows.h.
     set(FLUTTER_STUB_INCLUDES
-        "${CMAKE_CURRENT_SOURCE_DIR}/embedding/stubs"   # stub flutter_windows.h etc.
-        "${CMAKE_CURRENT_SOURCE_DIR}/embedding"          # flutter_stub.h
-        "${CMAKE_CURRENT_SOURCE_DIR}/../embedding"       # production headers
+        "${CMAKE_CURRENT_SOURCE_DIR}/embedding/stubs"       # stub flutter_windows.h etc.
+        "${CMAKE_CURRENT_SOURCE_DIR}/embedding"              # flutter_stub.h
+        "${CMAKE_CURRENT_SOURCE_DIR}/../QtFlutterEmbedding" # generic production headers
+        "${CMAKE_CURRENT_SOURCE_DIR}/../embedding"           # app-specific headers (FlutterMapItem, flutter_constants)
         "${CMAKE_CURRENT_SOURCE_DIR}/../models"
         "${CMAKE_CURRENT_SOURCE_DIR}/../utils"
     )
@@ -96,21 +97,21 @@ if(NOT EMSCRIPTEN)
 
     add_embedding_test(tst_componentbridge
         embedding/tst_componentbridge.cpp
-        ../embedding/ComponentBridge.cpp
-        ../embedding/ComponentBridge.h
+        ../QtFlutterEmbedding/ComponentBridge.cpp
+        ../QtFlutterEmbedding/ComponentBridge.h
     )
 
     add_embedding_test(tst_navigationbridge
         embedding/tst_navigationbridge.cpp
-        ../embedding/NavigationBridge.cpp
-        ../embedding/NavigationBridge.h
-        ../embedding/FlutterContainer.cpp
-        ../embedding/FlutterContainer.h
+        ../QtFlutterEmbedding/NavigationBridge.cpp
+        ../QtFlutterEmbedding/NavigationBridge.h
+        ../QtFlutterEmbedding/FlutterContainer.cpp
+        ../QtFlutterEmbedding/FlutterContainer.h
     )
 
     add_embedding_test(tst_fluttercontainer
         embedding/tst_fluttercontainer.cpp
-        ../embedding/FlutterContainer.cpp
-        ../embedding/FlutterContainer.h
+        ../QtFlutterEmbedding/FlutterContainer.cpp
+        ../QtFlutterEmbedding/FlutterContainer.h
     )
 endif()

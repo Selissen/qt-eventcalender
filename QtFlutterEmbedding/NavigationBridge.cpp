@@ -2,11 +2,14 @@
 
 #include "NavigationBridge.h"
 #include "FlutterContainer.h"
-#include "flutter_constants.h"
 
 #include <QDebug>
 #include <QPointer>
 #include <QQuickItem>
+
+// Navigation channel names — part of the Qt↔Flutter protocol.
+static constexpr const char* kChannelNavigation     = "navigation";
+static constexpr const char* kChannelNavigationBack = "navigation/back";
 
 NavigationBridge::NavigationBridge(QObject* parent)
     : QObject(parent) {}
@@ -14,6 +17,11 @@ NavigationBridge::NavigationBridge(QObject* parent)
 void NavigationBridge::setFlutterContainer(FlutterContainer* container)
 {
     flutter_ = container;
+}
+
+void NavigationBridge::setFlutterRoutes(const QStringList& routes)
+{
+    flutterRoutes_ = QSet<QString>(routes.begin(), routes.end());
 }
 
 void NavigationBridge::setFlutterView(QQuickItem* view)
@@ -37,13 +45,6 @@ void NavigationBridge::setFlutterVisible(bool visible)
         flutter_->hideEmbedded();
 }
 
-// Routes handled by Flutter. Must stay in sync with the GoRoute paths
-// registered in flutter/app/lib/router.dart.
-static const QSet<QString> kFlutterRoutes = {
-    QLatin1String(FlutterRoutes::kPlans),
-    QLatin1String(FlutterRoutes::kWidgetCatalog),
-};
-
 void NavigationBridge::navigateTo(const QString& route,
                                   const QVariantMap& params)
 {
@@ -55,7 +56,7 @@ void NavigationBridge::navigateTo(const QString& route,
     qDebug() << "[NavigationBridge] → route:" << route;
     emit routeRequested(route, params);
 
-    if (!kFlutterRoutes.contains(route)) {
+    if (!flutterRoutes_.contains(route)) {
         qDebug() << "[NavigationBridge] Qt-owned route, no Flutter handoff.";
         return;
     }
@@ -76,7 +77,7 @@ void NavigationBridge::navigateTo(const QString& route,
         const QByteArray utf8 = route.toUtf8();
         FlutterDesktopMessengerSend(
             msg,
-            FlutterChannels::kNavigation,
+            kChannelNavigation,
             reinterpret_cast<const uint8_t*>(utf8.constData()),
             static_cast<size_t>(utf8.size()));
     }
@@ -98,7 +99,7 @@ void NavigationBridge::listenForBackNavigation(FlutterDesktopMessengerRef messen
     QPointer<NavigationBridge> self = this;
     FlutterDesktopMessengerSetCallback(
         messenger,
-        FlutterChannels::kNavigationBack,
+        kChannelNavigationBack,
         [](FlutterDesktopMessengerRef m,
            const FlutterDesktopMessage* msg,
            void* user_data) {
