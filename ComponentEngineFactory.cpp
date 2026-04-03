@@ -7,34 +7,26 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString& assetsPath,
     const QString& icuDataPath,
     const QString& aotLibraryPath,
-    const QString& componentRoute,
+    const QString& entrypoint,
     int initialWidth,
     int initialHeight)
 {
-    // Lifetime: toStdWString/toStdString temporaries must outlive FlutterDesktopEngineCreate.
-    const std::wstring assets     = assetsPath.toStdWString();
-    const std::wstring icu        = icuDataPath.toStdWString();
-    const std::wstring aot        = aotLibraryPath.toStdWString();
-
-    // Map component route → Dart entrypoint function name.
-    // The Dart function must be annotated with @pragma('vm:entry-point').
-    // Add an entry here for every new component added to ComponentEngineFactory.
-    static const QMap<QString, QString> kEntrypoints = {
-        { QStringLiteral("/map-component"), QStringLiteral("mapComponentMain") },
-    };
-    const QByteArray entrypointUtf8 =
-        kEntrypoints.value(componentRoute, QStringLiteral("main")).toUtf8();
+    // Lifetime: wstring temporaries must outlive FlutterDesktopEngineCreate.
+    const std::wstring assets = assetsPath.toStdWString();
+    const std::wstring icu    = icuDataPath.toStdWString();
+    const std::wstring aot    = aotLibraryPath.toStdWString();
+    const QByteArray   ep     = entrypoint.toUtf8();
 
     FlutterDesktopEngineProperties props = {};
     props.assets_path      = assets.c_str();
     props.icu_data_path    = icu.c_str();
     props.aot_library_path = aot.empty() ? nullptr : aot.c_str();
-    props.dart_entrypoint  = entrypointUtf8.constData();
+    props.dart_entrypoint  = ep.constData();
 
     FlutterDesktopEngineRef engine = FlutterDesktopEngineCreate(&props);
     if (!engine) {
         qWarning("[ComponentEngineFactory] FlutterDesktopEngineCreate failed "
-                 "for route: %s", qPrintable(componentRoute));
+                 "for entrypoint: %s", qPrintable(entrypoint));
         return nullptr;
     }
 
@@ -42,7 +34,7 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
         FlutterDesktopViewControllerCreate(initialWidth, initialHeight, engine);
     if (!controller) {
         qWarning("[ComponentEngineFactory] FlutterDesktopViewControllerCreate "
-                 "failed for route: %s", qPrintable(componentRoute));
+                 "failed for entrypoint: %s", qPrintable(entrypoint));
         FlutterDesktopEngineDestroy(engine);
         return nullptr;
     }

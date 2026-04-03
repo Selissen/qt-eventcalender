@@ -39,6 +39,11 @@ public:
     Q_INVOKABLE void updateRoutes(const QVariantList& allRoutes,
                                   const QVariantList& selectedIds);
 
+signals:
+    /// Emitted when the user taps a route marker on the Flutter map.
+    /// Connect this in QML to toggle the matching checkbox in EventSidebar.
+    void routeToggled(int routeId);
+
 protected:
     void geometryChange(const QRectF& newGeom, const QRectF& oldGeom) override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;

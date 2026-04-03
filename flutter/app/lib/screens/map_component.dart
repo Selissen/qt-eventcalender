@@ -1,18 +1,8 @@
-import 'dart:convert';
-
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart' show BasicMessageChannel, StringCodec;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-
-// Bidirectional channel with the Qt host.
-// Qt → Flutter: {"method":"setRoutes","args":{...}}
-// Flutter → Qt: {"method":"ready"}  (sent once on startup so Qt knows to flush routes)
-const _mapChannel = BasicMessageChannel<String>(
-  'com.eventcalendar/map',
-  StringCodec(),
-);
 
 class MapComponentApp extends StatelessWidget {
   const MapComponentApp({super.key});
@@ -47,64 +37,61 @@ class MapComponentScreen extends StatefulWidget {
 
 class _MapComponentScreenState extends State<MapComponentScreen> {
   final _mapController = MapController();
+  late final _binding = FlutterComponentBinding(
+    channel: 'com.eventcalendar/map',
+    onMessage: _handleMessage,
+  );
 
   List<_RoutePoint> _routes = [];
   Set<int> _selectedIds = {};
 
-  // Netherlands centre — shown before any routes are received.
   static const _defaultCenter = LatLng(52.3, 5.3);
   static const _defaultZoom = 7.5;
 
   @override
   void initState() {
     super.initState();
-    _mapChannel.setMessageHandler(_onMessage);
-
-    // Tell Qt the Dart handler is registered and it can now send routes.
-    // Schedule after the first frame so the map widget is fully initialised
-    // before we attempt any camera operations.
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _mapChannel.send('{"method":"ready"}');
-    });
+    _binding.init();
   }
 
   @override
   void dispose() {
-    _mapChannel.setMessageHandler(null);
+    _binding.dispose();
     super.dispose();
   }
 
-  Future<String> _onMessage(String? message) async {
-    if (message == null) return '';
-    try {
-      final data = jsonDecode(message) as Map<String, dynamic>;
-      if (data['method'] == 'setRoutes') {
-        final args = data['args'] as Map<String, dynamic>;
-        final routes = (args['routes'] as List).map((r) {
-          final m = r as Map<String, dynamic>;
-          return _RoutePoint(
-            id: m['id'] as int,
-            name: m['name'] as String,
-            position: LatLng(
-              (m['lat'] as num).toDouble(),
-              (m['lng'] as num).toDouble(),
-            ),
-          );
-        }).toList();
-        final selectedIds =
-            (args['selectedIds'] as List).map((e) => e as int).toSet();
-
-        setState(() {
-          _routes = routes;
-          _selectedIds = selectedIds;
-        });
-
-        _fitCamera(routes, selectedIds);
-      }
-    } catch (e) {
-      debugPrint('[MapComponent] Failed to parse message: $e');
+  Future<void> _handleMessage(String method, Map<String, dynamic> args) async {
+    if (method == 'setRoutes') {
+      final routes = (args['routes'] as List).map((r) {
+        final m = r as Map<String, dynamic>;
+        return _RoutePoint(
+          id: m['id'] as int,
+          name: m['name'] as String,
+          position: LatLng(
+            (m['lat'] as num).toDouble(),
+            (m['lng'] as num).toDouble(),
+          ),
+        );
+      }).toList();
+      final selectedIds =
+          (args['selectedIds'] as List).map((e) => e as int).toSet();
+      setState(() {
+        _routes = routes;
+        _selectedIds = selectedIds;
+      });
+      _fitCamera(routes, selectedIds);
     }
-    return '';
+  }
+
+  void _toggleRoute(int routeId) {
+    setState(() {
+      if (_selectedIds.contains(routeId)) {
+        _selectedIds.remove(routeId);
+      } else {
+        _selectedIds.add(routeId);
+      }
+    });
+    _binding.send('toggleRoute', {'id': routeId});
   }
 
   void _fitCamera(List<_RoutePoint> routes, Set<int> selectedIds) {
@@ -113,8 +100,6 @@ class _MapComponentScreenState extends State<MapComponentScreen> {
         : routes.where((r) => selectedIds.contains(r.id)).toList();
     if (targets.isEmpty) return;
 
-    // Defer camera move to next frame — MapController throws StateError if the
-    // map widget has not been laid out yet (e.g. message arrived very early).
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
@@ -152,12 +137,15 @@ class _MapComponentScreenState extends State<MapComponentScreen> {
               point: r.position,
               width: selected ? 40 : 32,
               height: selected ? 40 : 32,
-              child: Tooltip(
-                message: r.name,
-                child: Icon(
-                  Icons.location_on,
-                  color: selected ? Colors.red.shade700 : Colors.grey.shade500,
-                  size: selected ? 40 : 28,
+              child: GestureDetector(
+                onTap: () => _toggleRoute(r.id),
+                child: Tooltip(
+                  message: r.name,
+                  child: Icon(
+                    Icons.location_on,
+                    color: selected ? Colors.red.shade700 : Colors.grey.shade500,
+                    size: selected ? 40 : 28,
+                  ),
                 ),
               ),
             );

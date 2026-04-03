@@ -165,7 +165,7 @@ if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
         FlutterFocusFilter.cpp
         FlutterView.cpp
         FlutterWidgetProxy.cpp
-        FlutterMapItem.cpp
+        FlutterComponentView.cpp
         ComponentBridge.cpp
         ComponentEngineFactory.cpp
         NavigationBridge.cpp

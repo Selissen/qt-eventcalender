@@ -155,11 +155,17 @@ ApplicationWindow {
         }
 
         // ── Map view — visible when the sidebar is in add/edit mode ─────────
-        FlutterMapItem {
+        FlutterComponentView {
             id: mapView
-            visible: sidebar.isEditing && typeof navBridge !== "undefined"
+            entrypoint: "mapComponentMain"
+            channel:    "com.eventcalendar/map"
+            visible:    sidebar.isEditing && typeof navBridge !== "undefined"
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            onMessageReceived: (method, args) => {
+                if (method === "toggleRoute") sidebar.toggleRoute(args.id)
+            }
         }
 
         // ── Calendar views + footer ──────────────────────────────────────
@@ -220,7 +226,7 @@ ApplicationWindow {
                 displayDate:    window.displayDate
                 weekViewActive: window.weekViewActive
                 onRouteSelectionChanged: (allRoutes, selectedIds) =>
-                    mapView.updateRoutes(allRoutes, selectedIds)
+                    mapView.send("setRoutes", { routes: allRoutes, selectedIds: selectedIds })
             }
         }
     }

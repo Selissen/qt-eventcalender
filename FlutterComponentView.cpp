@@ -1,6 +1,6 @@
 #ifndef Q_OS_WASM
 
-#include "FlutterMapItem.h"
+#include "FlutterComponentView.h"
 #include "ComponentBridge.h"
 #include "ComponentEngineFactory.h"
 
@@ -8,31 +8,46 @@
 #include <QFile>
 #include <QDir>
 #include <QQuickWindow>
-#include <QJsonArray>
 #include <QJsonObject>
+#include <QJsonDocument>
 #include <QDebug>
 
-FlutterMapItem::FlutterMapItem(QQuickItem* parent)
+FlutterComponentView::FlutterComponentView(QQuickItem* parent)
     : QQuickItem(parent) {}
 
-FlutterMapItem::~FlutterMapItem()
+FlutterComponentView::~FlutterComponentView()
 {
     if (loopTimer_) loopTimer_->stop();
     if (controller_) FlutterDesktopViewControllerDestroy(controller_);
 }
 
-void FlutterMapItem::ensureEngine()
+void FlutterComponentView::setEntrypoint(const QString& v)
 {
-    if (controller_ || !window())
+    if (entrypoint_ == v) return;
+    entrypoint_ = v;
+    emit entrypointChanged();
+}
+
+void FlutterComponentView::setChannel(const QString& v)
+{
+    if (channel_ == v) return;
+    channel_ = v;
+    emit channelChanged();
+}
+
+void FlutterComponentView::ensureEngine()
+{
+    if (controller_ || !window() || entrypoint_.isEmpty() || channel_.isEmpty())
         return;
 
-    const QString exeDir    = QCoreApplication::applicationDirPath();
+    const QString exeDir     = QCoreApplication::applicationDirPath();
     const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
     const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
     const QString aotPath    = exeDir + QStringLiteral("/app.so");
 
     if (!QDir(assetsPath).exists() || !QFile::exists(icuPath)) {
-        qWarning("[FlutterMapItem] flutter_assets/ or icudtl.dat missing — map disabled.");
+        qWarning("[FlutterComponentView] flutter_assets/ or icudtl.dat missing "
+                 "— component '%s' disabled.", qPrintable(entrypoint_));
         return;
     }
 
@@ -40,16 +55,17 @@ void FlutterMapItem::ensureEngine()
 
     controller_ = ComponentEngineFactory::createController(
         assetsPath, icuPath, resolvedAot,
-        QStringLiteral("/map-component"),
+        entrypoint_,
         qRound(width()), qRound(height()));
 
     if (!controller_) {
-        qWarning("[FlutterMapItem] createController() failed.");
+        qWarning("[FlutterComponentView] createController() failed for '%s'.",
+                 qPrintable(entrypoint_));
         return;
     }
 
     // Embed Flutter's HWND as a Win32 child of the QML window.
-    const HWND parentHwnd = reinterpret_cast<HWND>(window()->winId());
+    const HWND parentHwnd  = reinterpret_cast<HWND>(window()->winId());
     const HWND flutterHwnd = FlutterDesktopViewGetHWND(
         FlutterDesktopViewControllerGetView(controller_));
 
@@ -60,21 +76,19 @@ void FlutterMapItem::ensureEngine()
     ::SetParent(flutterHwnd, parentHwnd);
     ::ShowWindow(flutterHwnd, SW_HIDE);
 
-    // Wire the ComponentBridge for bidirectional JSON messages.
     bridge_ = new ComponentBridge(
         FlutterDesktopViewControllerGetEngine(controller_),
-        QStringLiteral("com.eventcalendar/map"),
+        channel_,
         this);
 
-    // Flutter sends {"method":"ready"} after its first frame, indicating the
-    // Dart message handler is registered.  Flush any pending routes then.
     connect(bridge_, &ComponentBridge::messageReceived,
-            this, [this](const QString& method, const QJsonObject& args) {
+            this, [this](const QString& method, const QJsonObject& jsonArgs) {
         if (method == QLatin1String("ready")) {
             dartReady_ = true;
-            flushPendingRoutes();
-        } else if (method == QLatin1String("toggleRoute")) {
-            emit routeToggled(args.value(QStringLiteral("id")).toInt());
+            emit readyChanged();
+            flushPending();
+        } else {
+            emit messageReceived(method, jsonArgs.toVariantMap());
         }
     });
 
@@ -90,76 +104,50 @@ void FlutterMapItem::ensureEngine()
     syncRect();
     syncVisibility(isVisible());
 
-    qDebug() << "[FlutterMapItem] Map engine initialised.";
+    qDebug("[FlutterComponentView] Engine started for '%s' on channel '%s'.",
+           qPrintable(entrypoint_), qPrintable(channel_));
 }
 
-void FlutterMapItem::updateRoutes(const QVariantList& allRoutes,
-                                  const QVariantList& selectedIds)
+void FlutterComponentView::send(const QString& method, const QVariantMap& args)
 {
-    pendingAllRoutes_   = allRoutes;
-    pendingSelectedIds_ = selectedIds;
-    pendingDirty_       = true;
-    flushPendingRoutes();
-}
-
-void FlutterMapItem::flushPendingRoutes()
-{
-    if (!pendingDirty_ || !bridge_ || !dartReady_)
+    if (!bridge_ || !dartReady_) {
+        pending_.append({ method, args });
         return;
-
-    QJsonArray routesArr;
-    for (const QVariant& v : std::as_const(pendingAllRoutes_)) {
-        const QVariantMap m = v.toMap();
-        QJsonObject r;
-        r[QStringLiteral("id")]   = m.value(QStringLiteral("id")).toInt();
-        r[QStringLiteral("name")] = m.value(QStringLiteral("name")).toString();
-        r[QStringLiteral("lat")]  = m.value(QStringLiteral("lat")).toDouble();
-        r[QStringLiteral("lng")]  = m.value(QStringLiteral("lng")).toDouble();
-        routesArr.append(r);
     }
-
-    QJsonArray selectedArr;
-    for (const QVariant& v : std::as_const(pendingSelectedIds_))
-        selectedArr.append(v.toInt());
-
-    bridge_->send(QStringLiteral("setRoutes"), {
-        { QStringLiteral("routes"),      routesArr },
-        { QStringLiteral("selectedIds"), selectedArr },
-    });
-
-    pendingDirty_ = false;
+    bridge_->send(method, QJsonObject::fromVariantMap(args));
 }
 
-void FlutterMapItem::geometryChange(const QRectF& newGeom, const QRectF& oldGeom)
+void FlutterComponentView::flushPending()
+{
+    if (!bridge_ || !dartReady_) return;
+    for (const Msg& m : std::as_const(pending_))
+        bridge_->send(m.method, QJsonObject::fromVariantMap(m.args));
+    pending_.clear();
+}
+
+void FlutterComponentView::geometryChange(const QRectF& newGeom, const QRectF& oldGeom)
 {
     QQuickItem::geometryChange(newGeom, oldGeom);
     syncRect();
 }
 
-void FlutterMapItem::itemChange(ItemChange change, const ItemChangeData& value)
+void FlutterComponentView::itemChange(ItemChange change, const ItemChangeData& value)
 {
     QQuickItem::itemChange(change, value);
-
     if (change == ItemSceneChange && value.window) {
-        // Window became available; start engine if already visible.
-        if (isVisible())
-            ensureEngine();
+        if (isVisible()) ensureEngine();
     } else if (change == ItemVisibleHasChanged) {
-        if (value.boolValue)
-            ensureEngine();
+        if (value.boolValue) ensureEngine();
         syncRect();
         syncVisibility(value.boolValue);
     }
 }
 
-void FlutterMapItem::syncRect()
+void FlutterComponentView::syncRect()
 {
-    if (!controller_ || !window())
-        return;
-
+    if (!controller_ || !window()) return;
     const HWND flutterHwnd = FlutterDesktopViewGetHWND(
         FlutterDesktopViewControllerGetView(controller_));
-
     const QPointF scenePos = mapToScene(QPointF(0, 0));
     ::MoveWindow(flutterHwnd,
                  qRound(scenePos.x()), qRound(scenePos.y()),
@@ -167,14 +155,11 @@ void FlutterMapItem::syncRect()
                  TRUE);
 }
 
-void FlutterMapItem::syncVisibility(bool visible)
+void FlutterComponentView::syncVisibility(bool visible)
 {
-    if (!controller_)
-        return;
-
+    if (!controller_) return;
     const HWND flutterHwnd = FlutterDesktopViewGetHWND(
         FlutterDesktopViewControllerGetView(controller_));
-
     ::ShowWindow(flutterHwnd, visible ? SW_SHOW : SW_HIDE);
 }
 

@@ -9,7 +9,7 @@
 #  include "FlutterContainer.h"
 #  include "FlutterFocusFilter.h"
 #  include "FlutterView.h"
-#  include "FlutterMapItem.h"
+#  include "FlutterComponentView.h"
 #  include "NavigationBridge.h"
 #else
 #  include <QGuiApplication>
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 
     // Register Flutter QML items so they can be used with normal anchors/layouts.
     qmlRegisterType<FlutterView>("App", 1, 0, "FlutterView");
-    qmlRegisterType<FlutterMapItem>("App", 1, 0, "FlutterMapItem");
+    qmlRegisterType<FlutterComponentView>("App", 1, 0, "FlutterComponentView");
 #endif // EC_FLUTTER_EMBED_ENABLED
 
     const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
