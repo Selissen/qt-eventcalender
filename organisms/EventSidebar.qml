@@ -72,6 +72,17 @@ Item {
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
+    /// Toggle the checked state of one route by ID (called from the map).
+    function toggleRoute(routeId) {
+        for (var i = 0; i < routesModel.count; i++) {
+            if (routesModel.get(i).routeId === routeId) {
+                routesModel.setProperty(i, "checked", !routesModel.get(i).checked)
+                _notifyRouteSelection()
+                break
+            }
+        }
+    }
+
     function requestEdit(planId, startDt, endDt, unitId, routeIds) {
         editPlanId                   = planId
         startPicker.selectedDateTime = startDt
