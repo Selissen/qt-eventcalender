@@ -11,6 +11,7 @@
 #  include "FlutterView.h"
 #  include "FlutterComponentView.h"
 #  include "NavigationBridge.h"
+#  include "ComponentEngineFactory.h"
 #else
 #  include <QGuiApplication>
 #endif
@@ -82,31 +83,38 @@ int main(int argc, char *argv[])
 
 #ifdef EC_FLUTTER_EMBED_ENABLED
     // ── Phase 1: Flutter embedded inside the QML window ──────────────────────
-    const QString exeDir    = QCoreApplication::applicationDirPath();
-    const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
-    const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
-    const QString aotPath    = exeDir + QStringLiteral("/app.so");
+    const QString exeDir = QCoreApplication::applicationDirPath();
+
+    // Register the artifacts directory once; FlutterComponentView and
+    // FlutterMapItem pick it up automatically via ComponentEngineFactory::artifactsDir().
+    ComponentEngineFactory::setArtifactsDir(exeDir);
 
     FlutterContainer* flutter   = nullptr;
     NavigationBridge* navBridge = new NavigationBridge(&app);
 
-    if (QDir(assetsPath).exists() && QFile::exists(icuPath)) {
-        flutter = new FlutterContainer(&app);
-        const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
+    {
+        const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
+        const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
+        const QString aotPath    = exeDir + QStringLiteral("/app.so");
 
-        if (!flutter->initialize(assetsPath, icuPath, resolvedAot)) {
-            qWarning("[Flutter] initialize() failed — running Qt-only.");
-            delete flutter;
-            flutter = nullptr;
+        if (QDir(assetsPath).exists() && QFile::exists(icuPath)) {
+            flutter = new FlutterContainer(&app);
+            const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
+
+            if (!flutter->initialize(assetsPath, icuPath, resolvedAot)) {
+                qWarning("[Flutter] initialize() failed — running Qt-only.");
+                delete flutter;
+                flutter = nullptr;
+            } else {
+                navBridge->setFlutterContainer(flutter);
+                navBridge->setFlutterRoutes({ QStringLiteral("/plans"),
+                                              QStringLiteral("/widget-catalog") });
+                app.installNativeEventFilter(new FlutterFocusFilter(flutter));
+            }
         } else {
-            navBridge->setFlutterContainer(flutter);
-            navBridge->setFlutterRoutes({ QStringLiteral("/plans"),
-                                          QStringLiteral("/widget-catalog") });
-            app.installNativeEventFilter(new FlutterFocusFilter(flutter));
+            qWarning("[Flutter] flutter_assets/ or icudtl.dat missing next to executable. "
+                     "Run: cd flutter/app && flutter build windows --release");
         }
-    } else {
-        qWarning("[Flutter] flutter_assets/ or icudtl.dat missing next to executable. "
-                 "Run: cd flutter/app && flutter build windows --release");
     }
 
     // Expose navBridge to QML so the toolbar button can call navigateTo().

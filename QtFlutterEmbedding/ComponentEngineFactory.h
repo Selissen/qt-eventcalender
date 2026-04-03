@@ -14,21 +14,39 @@
 /// Ownership: the returned controller (and its engine) must be destroyed via
 /// FlutterDesktopViewControllerDestroy() when the host is closed.
 ///
-/// Example:
-///   auto* ctrl = ComponentEngineFactory::createController(
-///       exeDir + "/flutter_assets",
-///       exeDir + "/icudtl.dat",
-///       exeDir + "/app.so",
-///       "mapComponentMain");
+/// Typical setup in main():
+///   ComponentEngineFactory::setArtifactsDir(exeDir);
+///
+/// Then per component (or from QML via FlutterComponentView.artifactsDir):
+///   auto* ctrl = ComponentEngineFactory::createController("mapComponentMain");
 class ComponentEngineFactory {
 public:
     ComponentEngineFactory() = delete;
 
+    /// Set the process-wide default directory that contains flutter_assets/,
+    /// icudtl.dat, and app.so.  Call once from main() before any component is
+    /// shown.  Thread safety: must be called from the main thread before any
+    /// engine is created.
+    static void setArtifactsDir(const QString& path);
+
+    /// Returns the configured artifacts directory, or
+    /// QCoreApplication::applicationDirPath() when none has been set.
+    static QString artifactsDir();
+
+    /// Convenience overload: derives assetsPath / icuDataPath / aotPath from
+    /// artifactsDir() and forwards to the full overload.
+    static FlutterDesktopViewControllerRef createController(
+        const QString& entrypoint,
+        int initialWidth  = 400,
+        int initialHeight = 300);
+
+    /// Full overload: explicit paths for all three artifacts.  Use this when a
+    /// specific component needs artifacts from a non-default location.
     static FlutterDesktopViewControllerRef createController(
         const QString& assetsPath,
         const QString& icuDataPath,
         const QString& aotLibraryPath,
-        const QString& entrypoint,      ///< Dart function name, e.g. "mapComponentMain"
+        const QString& entrypoint,
         int initialWidth  = 400,
         int initialHeight = 300);
 };

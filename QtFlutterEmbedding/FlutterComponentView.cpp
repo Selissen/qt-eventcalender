@@ -4,7 +4,6 @@
 #include "ComponentBridge.h"
 #include "ComponentEngineFactory.h"
 
-#include <QCoreApplication>
 #include <QFile>
 #include <QDir>
 #include <QQuickWindow>
@@ -42,26 +41,28 @@ void FlutterComponentView::setChannel(const QString& v)
     emit channelChanged();
 }
 
+void FlutterComponentView::setArtifactsDir(const QString& v)
+{
+    if (artifactsDir_ == v) return;
+    artifactsDir_ = v;
+    emit artifactsDirChanged();
+}
+
 void FlutterComponentView::ensureEngine()
 {
     if (controller_ || !window() || entrypoint_.isEmpty() || channel_.isEmpty())
         return;
 
-    const QString exeDir     = QCoreApplication::applicationDirPath();
-    const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
-    const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
-    const QString aotPath    = exeDir + QStringLiteral("/app.so");
-
-    if (!QDir(assetsPath).exists() || !QFile::exists(icuPath)) {
-        qWarning("[FlutterComponentView] flutter_assets/ or icudtl.dat missing "
-                 "— component '%s' disabled.", qPrintable(entrypoint_));
-        return;
-    }
-
-    const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
+    // Instance property overrides the process-wide factory default.
+    const QString dir = artifactsDir_.isEmpty()
+        ? ComponentEngineFactory::artifactsDir()
+        : artifactsDir_;
 
     controller_ = ComponentEngineFactory::createController(
-        assetsPath, icuPath, resolvedAot,
+        dir + QStringLiteral("/flutter_assets"),
+        dir + QStringLiteral("/icudtl.dat"),
+        QFile::exists(dir + QStringLiteral("/app.so"))
+            ? dir + QStringLiteral("/app.so") : QString{},
         entrypoint_,
         qRound(width()), qRound(height()));
 

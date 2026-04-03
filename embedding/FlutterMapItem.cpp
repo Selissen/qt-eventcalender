@@ -5,9 +5,6 @@
 #include "ComponentEngineFactory.h"
 #include "flutter_constants.h"
 
-#include <QCoreApplication>
-#include <QFile>
-#include <QDir>
 #include <QQuickWindow>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -33,20 +30,7 @@ void FlutterMapItem::ensureEngine()
     if (controller_ || !window())
         return;
 
-    const QString exeDir    = QCoreApplication::applicationDirPath();
-    const QString assetsPath = exeDir + QStringLiteral("/flutter_assets");
-    const QString icuPath    = exeDir + QStringLiteral("/icudtl.dat");
-    const QString aotPath    = exeDir + QStringLiteral("/app.so");
-
-    if (!QDir(assetsPath).exists() || !QFile::exists(icuPath)) {
-        qWarning("[FlutterMapItem] flutter_assets/ or icudtl.dat missing — map disabled.");
-        return;
-    }
-
-    const QString resolvedAot = QFile::exists(aotPath) ? aotPath : QString{};
-
     controller_ = ComponentEngineFactory::createController(
-        assetsPath, icuPath, resolvedAot,
         QStringLiteral("/map-component"),
         qRound(width()), qRound(height()));
 

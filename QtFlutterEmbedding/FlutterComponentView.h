@@ -17,9 +17,10 @@ class ComponentBridge;
 ///
 /// QML usage:
 ///   FlutterComponentView {
-///       entrypoint: "mapComponentMain"
-///       channel:    "com.eventcalendar/map"
-///       visible:    sidebar.isEditing
+///       entrypoint:   "mapComponentMain"
+///       channel:      "com.eventcalendar/map"
+///       artifactsDir: "/path/to/flutter/build"  // optional; defaults to exe dir
+///       visible:      sidebar.isEditing
 ///       Layout.fillWidth: true; Layout.fillHeight: true
 ///
 ///       onReadyChanged: if (ready) send("init", {key: value})
@@ -32,20 +33,25 @@ class ComponentBridge;
 ///      anywhere in QML — no C++ changes required.
 class FlutterComponentView : public QQuickItem {
     Q_OBJECT
-    Q_PROPERTY(QString entrypoint READ entrypoint WRITE setEntrypoint NOTIFY entrypointChanged)
-    Q_PROPERTY(QString channel    READ channel    WRITE setChannel    NOTIFY channelChanged)
-    Q_PROPERTY(bool    ready      READ ready                          NOTIFY readyChanged)
+    Q_PROPERTY(QString entrypoint   READ entrypoint   WRITE setEntrypoint   NOTIFY entrypointChanged)
+    Q_PROPERTY(QString channel      READ channel      WRITE setChannel      NOTIFY channelChanged)
+    Q_PROPERTY(QString artifactsDir READ artifactsDir WRITE setArtifactsDir NOTIFY artifactsDirChanged)
+    Q_PROPERTY(bool    ready        READ ready                               NOTIFY readyChanged)
     QML_ELEMENT
 public:
     explicit FlutterComponentView(QQuickItem* parent = nullptr);
     ~FlutterComponentView() override;
 
-    QString entrypoint() const { return entrypoint_; }
-    QString channel()    const { return channel_; }
-    bool    ready()      const { return dartReady_; }
+    QString entrypoint()   const { return entrypoint_; }
+    QString channel()      const { return channel_; }
+    /// Per-component artifacts directory override.
+    /// Empty (default) means use ComponentEngineFactory::artifactsDir().
+    QString artifactsDir() const { return artifactsDir_; }
+    bool    ready()        const { return dartReady_; }
 
     void setEntrypoint(const QString& v);
     void setChannel(const QString& v);
+    void setArtifactsDir(const QString& v);
 
     /// Send a JSON message to the Flutter component.
     /// Can be called before the engine is ready — messages are queued and
@@ -55,6 +61,7 @@ public:
 signals:
     void entrypointChanged();
     void channelChanged();
+    void artifactsDirChanged();
     /// Emitted once after Flutter's first frame registers its message handler.
     void readyChanged();
     /// Emitted for every message the Flutter component sends back.
@@ -72,6 +79,7 @@ private:
 
     QString entrypoint_;
     QString channel_;
+    QString artifactsDir_;
 
     FlutterDesktopViewControllerRef controller_ = nullptr;
     ComponentBridge*                bridge_     = nullptr;

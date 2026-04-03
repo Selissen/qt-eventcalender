@@ -101,6 +101,12 @@ if(NOT EMSCRIPTEN)
         ../QtFlutterEmbedding/ComponentBridge.h
     )
 
+    add_embedding_test(tst_componentenginefactory
+        embedding/tst_componentenginefactory.cpp
+        ../QtFlutterEmbedding/ComponentEngineFactory.cpp
+        ../QtFlutterEmbedding/ComponentEngineFactory.h
+    )
+
     add_embedding_test(tst_navigationbridge
         embedding/tst_navigationbridge.cpp
         ../QtFlutterEmbedding/NavigationBridge.cpp

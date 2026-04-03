@@ -1,9 +1,39 @@
 #ifndef Q_OS_WASM
 
 #include "ComponentEngineFactory.h"
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+
+// Process-wide artifacts directory. Empty means "use applicationDirPath()".
+static QString s_artifactsDir;
+
+void ComponentEngineFactory::setArtifactsDir(const QString& path)
+{
+    s_artifactsDir = path;
+}
+
+QString ComponentEngineFactory::artifactsDir()
+{
+    return s_artifactsDir.isEmpty()
+        ? QCoreApplication::applicationDirPath()
+        : s_artifactsDir;
+}
+
+FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
+    const QString& entrypoint,
+    int initialWidth,
+    int initialHeight)
+{
+    const QString dir    = artifactsDir();
+    const QString assets = dir + QStringLiteral("/flutter_assets");
+    const QString icu    = dir + QStringLiteral("/icudtl.dat");
+    const QString aot    = dir + QStringLiteral("/app.so");
+    return createController(assets, icu,
+                            QFile::exists(aot) ? aot : QString{},
+                            entrypoint, initialWidth, initialHeight);
+}
 
 FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString& assetsPath,
