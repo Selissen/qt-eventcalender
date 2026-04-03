@@ -13,10 +13,14 @@ dependencies:
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
   go_router: ^13.0.0
+  flutter_map: ^7.0.0
+  latlong2: ^0.9.1
   core:
     path: ../packages/core
   design_system:
     path: ../packages/design_system
+  feature_plans:
+    path: ../packages/feature_plans
 
 dev_dependencies:
   flutter_test:

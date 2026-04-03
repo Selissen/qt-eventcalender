@@ -25,7 +25,7 @@ bool FlutterContainer::initialize(const QString& assetsPath,
         return false;
     }
 
-    // Initial size 0×0; resized by the caller after embedInto().
+    // Initial size 0×0; positioned later via moveToRect() from FlutterView.
     controller_ = FlutterDesktopViewControllerCreate(0, 0, engine_);
     if (!controller_) {
         qWarning("[Flutter] FlutterDesktopViewControllerCreate failed.");
@@ -45,7 +45,7 @@ bool FlutterContainer::initialize(const QString& assetsPath,
     return true;
 }
 
-bool FlutterContainer::embedInto(HWND parentHwnd, int w, int h)
+bool FlutterContainer::embedInto(HWND parentHwnd)
 {
     HWND hwnd = flutterHwnd();
     if (!hwnd || !parentHwnd)
@@ -58,12 +58,17 @@ bool FlutterContainer::embedInto(HWND parentHwnd, int w, int h)
             | WS_CHILD;
     ::SetWindowLong(hwnd, GWL_STYLE, style);
     ::SetParent(hwnd, parentHwnd);
-    ::MoveWindow(hwnd, 0, 0, w, h, TRUE);
     // Start hidden; NavigationBridge calls showEmbedded() on first navigation.
     ::ShowWindow(hwnd, SW_HIDE);
     embedded_visible_ = false;
 
     return true;
+}
+
+void FlutterContainer::moveToRect(int x, int y, int w, int h)
+{
+    if (HWND hwnd = flutterHwnd())
+        ::MoveWindow(hwnd, x, y, w, h, TRUE);
 }
 
 void FlutterContainer::showEmbedded()
@@ -81,12 +86,6 @@ void FlutterContainer::hideEmbedded()
         ::ShowWindow(hwnd, SW_HIDE);
         embedded_visible_ = false;
     }
-}
-
-void FlutterContainer::resizeEmbedded(int w, int h)
-{
-    if (HWND hwnd = flutterHwnd())
-        ::MoveWindow(hwnd, 0, 0, w, h, TRUE);
 }
 
 HWND FlutterContainer::flutterHwnd() const

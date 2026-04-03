@@ -12,12 +12,12 @@
 ///
 /// Lifecycle:
 ///   1. Construct and call initialize() with asset/icu/aot paths.
-///   2. Call embedInto(parentHwnd, w, h) to reparent Flutter's HWND as a
-///      child of an existing Win32 window (e.g. the QQuickWindow).
-///   3. Call showEmbedded() / hideEmbedded() to toggle visibility.
-///   4. Call resizeEmbedded(w, h) whenever the parent window resizes.
-///   5. Use messenger() + FlutterDesktopMessengerSend to send messages to
-///      Flutter (e.g. navigation channel).
+///   2. Call embedInto(parentHwnd) to reparent Flutter's HWND as a child of
+///      an existing Win32 window (e.g. the QQuickWindow). Starts hidden.
+///   3. Call moveToRect(x, y, w, h) to position/size the HWND — driven by
+///      FlutterView's geometryChange() so QML anchors control the layout.
+///   4. Call showEmbedded() / hideEmbedded() to toggle visibility.
+///   5. Use messenger() + FlutterDesktopMessengerSend for channel messages.
 class FlutterContainer : public QObject {
     Q_OBJECT
 public:
@@ -28,15 +28,17 @@ public:
                     const QString& icuDataPath,
                     const QString& aotLibraryPath = {});
 
-    /// Reparent the Flutter view HWND as a Win32 child of parentHwnd, sized
-    /// to (w, h). Starts hidden — call showEmbedded() to make it visible.
-    bool embedInto(HWND parentHwnd, int w, int h);
+    /// Reparent the Flutter view HWND as a Win32 child of parentHwnd.
+    /// Position and size are managed via moveToRect(); starts hidden.
+    bool embedInto(HWND parentHwnd);
+
+    /// Move and resize the Flutter HWND to the given rect (physical pixels,
+    /// relative to the parent window). Called by FlutterView on geometry change.
+    void moveToRect(int x, int y, int w, int h);
 
     void showEmbedded();
     void hideEmbedded();
     bool isEmbeddedVisible() const { return embedded_visible_; }
-
-    void resizeEmbedded(int w, int h);
 
     HWND flutterHwnd() const;
 
@@ -44,9 +46,9 @@ public:
     FlutterDesktopMessengerRef messenger() const;
 
 private:
-    FlutterDesktopEngineRef          engine_     = nullptr;
-    FlutterDesktopViewControllerRef  controller_ = nullptr;
-    QTimer*                          loop_timer_ = nullptr;
+    FlutterDesktopEngineRef          engine_           = nullptr;
+    FlutterDesktopViewControllerRef  controller_       = nullptr;
+    QTimer*                          loop_timer_       = nullptr;
     bool                             embedded_visible_ = false;
 };
 

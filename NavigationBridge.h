@@ -6,17 +6,16 @@
 #include <flutter_messenger.h>
 
 class FlutterContainer;
+class QQuickItem;
 
 /// Mediates navigation between the Qt shell and the Flutter layer.
 ///
 /// Call setFlutterContainer() once the Flutter engine is initialised and
-/// embedded. After that, navigateTo() will:
-///   1. Show the Flutter view (hiding the QML content behind it).
-///   2. Send the route to Flutter's "navigation" BasicMessageChannel so
-///      go_router can push the correct screen.
+/// embedded, and setFlutterView() once the FlutterView QML item exists.
 ///
-/// To return to Qt: call navigateToQt() (or connect a Flutter→Qt channel
-/// in a later phase).
+/// navigateTo() shows the FlutterView and sends the route to Flutter's
+/// "navigation" BasicMessageChannel so go_router can push the correct screen.
+/// navigateToQt() hides the FlutterView and returns focus to QML.
 class NavigationBridge : public QObject {
     Q_OBJECT
 public:
@@ -24,7 +23,16 @@ public:
 
     void setFlutterContainer(FlutterContainer* container);
 
-    /// Navigate to a Flutter-owned go_router route, e.g. "/widget-catalog".
+    /// Called by FlutterView when its bridge property is set.
+    void setFlutterView(QQuickItem* view);
+
+    /// Called by FlutterView's geometryChange() to reposition the HWND.
+    Q_INVOKABLE void updateFlutterRect(int x, int y, int w, int h);
+
+    /// Called by FlutterView's itemChange(Visible) to show/hide the HWND.
+    Q_INVOKABLE void setFlutterVisible(bool visible);
+
+    /// Navigate to a Flutter-owned go_router route, e.g. "/plans".
     Q_INVOKABLE void navigateTo(const QString& route,
                                 const QVariantMap& params = {});
 
@@ -33,7 +41,6 @@ public:
 
     /// Register a callback on the "navigation/back" Flutter channel so the
     /// Flutter side can trigger a return to Qt (e.g. via a Back button).
-    /// Call this once after the Flutter engine is embedded and running.
     void listenForBackNavigation(FlutterDesktopMessengerRef messenger);
 
 signals:
@@ -41,7 +48,8 @@ signals:
     void returnedToQt();
 
 private:
-    FlutterContainer* flutter_ = nullptr;
+    FlutterContainer* flutter_     = nullptr;
+    QQuickItem*       flutterView_ = nullptr;
 };
 
 #endif // Q_OS_WASM

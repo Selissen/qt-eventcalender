@@ -36,11 +36,40 @@ Item {
 
         var routes = root.planDatabase.allRoutes()
         for (var j = 0; j < routes.length; j++)
-            routesModel.append({ routeId: routes[j].id, routeName: routes[j].name, checked: false })
+            routesModel.append({ routeId: routes[j].id, routeName: routes[j].name,
+                                 lat: routes[j].lat || 0, lng: routes[j].lng || 0,
+                                 checked: false })
     }
 
     ListModel { id: unitsModel  }
     ListModel { id: routesModel }
+
+    // ── Signals ────────────────────────────────────────────────────────────
+    /// Emitted when the form opens or the route selection changes.
+    /// allRoutes:   list of {id, name, lat, lng}
+    /// selectedIds: list of currently checked route IDs
+    signal routeSelectionChanged(var allRoutes, var selectedIds)
+
+    // ── Internal helpers ───────────────────────────────────────────────────
+    function _allRoutesWithCoords() {
+        var result = []
+        for (var i = 0; i < routesModel.count; i++) {
+            var r = routesModel.get(i)
+            result.push({ id: r.routeId, name: r.routeName, lat: r.lat, lng: r.lng })
+        }
+        return result
+    }
+
+    function _selectedRouteIds() {
+        var result = []
+        for (var i = 0; i < routesModel.count; i++)
+            if (routesModel.get(i).checked) result.push(routesModel.get(i).routeId)
+        return result
+    }
+
+    function _notifyRouteSelection() {
+        routeSelectionChanged(_allRoutesWithCoords(), _selectedRouteIds())
+    }
 
     // ── Public API ─────────────────────────────────────────────────────────
     function requestEdit(planId, startDt, endDt, unitId, routeIds) {
@@ -59,6 +88,7 @@ Item {
             routesModel.setProperty(j, "checked", routeIds.indexOf(rid) >= 0)
         }
         isEditing = true
+        _notifyRouteSelection()
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -156,6 +186,7 @@ Item {
                         for (var i = 0; i < routesModel.count; i++)
                             routesModel.setProperty(i, "checked", false)
                         root.isEditing = true
+                        root._notifyRouteSelection()
                     }
                 }
             }
@@ -333,7 +364,10 @@ Item {
                                     width: routesList.width
                                     text: model.routeName
                                     checked: model.checked
-                                    onToggled: routesModel.setProperty(index, "checked", checked)
+                                    onToggled: {
+                                        routesModel.setProperty(index, "checked", checked)
+                                        root._notifyRouteSelection()
+                                    }
                                 }
                             }
                         }

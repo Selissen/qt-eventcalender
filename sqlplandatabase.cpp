@@ -425,12 +425,14 @@ void SqlPlanDatabase::setRoutes(const QVariantList &routes)
 QVariantList SqlPlanDatabase::allRoutes() const
 {
     QSqlQuery query(QSqlDatabase::database(m_connectionName));
-    query.exec("SELECT id, name FROM Route ORDER BY id");
+    query.exec("SELECT id, name, lat, lng FROM Route ORDER BY id");
     QVariantList result;
     while (query.next()) {
         QVariantMap m;
         m[QStringLiteral("id")]   = query.value("id");
         m[QStringLiteral("name")] = query.value("name");
+        m[QStringLiteral("lat")]  = query.value("lat");
+        m[QStringLiteral("lng")]  = query.value("lng");
         result.append(m);
     }
     return result;
@@ -510,12 +512,15 @@ void SqlPlanDatabase::createSchema(QSqlDatabase &db)
 
     q.exec("CREATE TABLE IF NOT EXISTS Route ("
            "  id   INTEGER PRIMARY KEY,"
-           "  name TEXT NOT NULL"
+           "  name TEXT NOT NULL,"
+           "  lat  REAL NOT NULL DEFAULT 0,"
+           "  lng  REAL NOT NULL DEFAULT 0"
            ")");
-    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (1, 'Route A')");
-    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (2, 'Route B')");
-    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (3, 'Route C')");
-    q.exec("INSERT OR IGNORE INTO Route (id, name) VALUES (4, 'Route D')");
+    // Seed routes with Dutch city coordinates (Amsterdam, Rotterdam, Utrecht, The Hague).
+    q.exec("INSERT OR IGNORE INTO Route (id, name, lat, lng) VALUES (1, 'Route A', 52.3676, 4.9041)");
+    q.exec("INSERT OR IGNORE INTO Route (id, name, lat, lng) VALUES (2, 'Route B', 51.9244, 4.4777)");
+    q.exec("INSERT OR IGNORE INTO Route (id, name, lat, lng) VALUES (3, 'Route C', 52.0907, 5.1214)");
+    q.exec("INSERT OR IGNORE INTO Route (id, name, lat, lng) VALUES (4, 'Route D', 52.0705, 4.3007)");
 
     q.exec("CREATE TABLE IF NOT EXISTS Plan ("
            "  id        INTEGER PRIMARY KEY AUTOINCREMENT,"

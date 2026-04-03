@@ -163,6 +163,11 @@ if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
     target_sources(eventcalendar PRIVATE
         FlutterContainer.cpp
         FlutterFocusFilter.cpp
+        FlutterView.cpp
+        FlutterWidgetProxy.cpp
+        FlutterMapItem.cpp
+        ComponentBridge.cpp
+        ComponentEngineFactory.cpp
         NavigationBridge.cpp
     )
     # Explicit include so moc (autogen step) can resolve flutter_windows.h

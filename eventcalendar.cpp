@@ -4,9 +4,12 @@
 #ifdef EC_FLUTTER_EMBED_ENABLED
 #  include <QApplication>
 #  include <QQuickWindow>
+#  include <QQmlEngine>
 #  include <windows.h>
 #  include "FlutterContainer.h"
 #  include "FlutterFocusFilter.h"
+#  include "FlutterView.h"
+#  include "FlutterMapItem.h"
 #  include "NavigationBridge.h"
 #else
 #  include <QGuiApplication>
@@ -107,6 +110,10 @@ int main(int argc, char *argv[])
     // Expose navBridge to QML so the toolbar button can call navigateTo().
     // Set before engine.load() so it is available from the first frame.
     engine.rootContext()->setContextProperty(QStringLiteral("navBridge"), navBridge);
+
+    // Register Flutter QML items so they can be used with normal anchors/layouts.
+    qmlRegisterType<FlutterView>("App", 1, 0, "FlutterView");
+    qmlRegisterType<FlutterMapItem>("App", 1, 0, "FlutterMapItem");
 #endif // EC_FLUTTER_EMBED_ENABLED
 
     const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
@@ -126,21 +133,13 @@ int main(int argc, char *argv[])
 
         const HWND qmlHwnd = reinterpret_cast<HWND>(qmlWindow->winId());
 
-        // Embed the Flutter view as a native Win32 child of the QML window.
-        if (!flutter->embedInto(qmlHwnd, qmlWindow->width(), qmlWindow->height())) {
+        // Embed the Flutter view as a Win32 child of the QML window.
+        // Position/size is managed by FlutterView via moveToRect(); no initial
+        // size needed here — FlutterView's geometryChange() handles it.
+        if (!flutter->embedInto(qmlHwnd)) {
             qWarning("[Flutter] embedInto() failed — Flutter will not be visible.");
             return;
         }
-
-        // Keep Flutter sized to the QML window on resize.
-        QObject::connect(qmlWindow, &QQuickWindow::widthChanged, flutter,
-                         [flutter, qmlWindow]() {
-            flutter->resizeEmbedded(qmlWindow->width(), qmlWindow->height());
-        });
-        QObject::connect(qmlWindow, &QQuickWindow::heightChanged, flutter,
-                         [flutter, qmlWindow]() {
-            flutter->resizeEmbedded(qmlWindow->width(), qmlWindow->height());
-        });
 
         // Register the Qt←Flutter back channel so Flutter can return to Qt.
         navBridge->listenForBackNavigation(flutter->messenger());

@@ -15,7 +15,7 @@ Any change that touches `CMakeLists.txt`, `eventcalendar.cpp`, C++ headers/sourc
 1. **Desktop** — build in Qt Creator with the MinGW kit and confirm the app launches without errors.
 2. **WASM** — run `python scripts/check_wasm.py` (builds + headless smoke test) and confirm it exits 0.
 
-Any change that touches `flutter/`, `FlutterContainer.*`, `NavigationBridge.*`, or `FlutterFocusFilter.*` must also:
+Any change that touches `flutter/`, `FlutterContainer.*`, `FlutterWidgetProxy.*`, `ComponentBridge.*`, `ComponentEngineFactory.*`, `NavigationBridge.*`, or `FlutterFocusFilter.*` must also:
 
 3. **Flutter** — run `python scripts/check_flutter.py` (builds Flutter + syncs artifacts) and confirm it exits 0, then rebuild the Qt desktop target and confirm the embedding still works.
 
@@ -233,8 +233,35 @@ Re-run whenever `proto/calendar.proto` changes.
 |---|---|---|
 | 0 | ✅ Done | Embedding validated — Flutter engine initialises inside Qt window |
 | 1 | ✅ Done | Navigation bridge wired — toolbar button + back channel work |
-| 2 | Pending | Migrate screens one by one (see `FLUTTER.md` for priority order) |
+| 2 | 🔄 In progress | Component embedding + screen migration infrastructure in place |
 | 3 | Pending | Flutter becomes navigation owner; Qt shell retired |
+
+#### Phase 2 C++ additions
+
+| File | Role |
+|---|---|
+| `FlutterWidgetProxy` | `QWidget` layout slot for a single Flutter component within a Qt screen. Relays resize/show/hide to the Flutter HWND. Use `activate()` after the proxy is visible. |
+| `ComponentBridge` | Bidirectional JSON bridge per component via `FlutterDesktopMessengerSend`. Channel convention: `com.eventcalendar/<name>`. |
+| `ComponentEngineFactory` | Creates a Flutter engine + view controller per component, passing `COMPONENT_ROUTE` via `--dart-define` so Flutter renders the right component. |
+
+#### Phase 2 Flutter additions
+
+| Path | Role |
+|---|---|
+| `flutter/packages/core/lib/src/providers/plans_provider.dart` | `plansProvider` — accumulates `SubscribePlans` gRPC stream into a live `List<Plan>` |
+| `flutter/packages/feature_plans/` | Migrated plans list screen using `plansProvider` + `AppScaffold` |
+| `flutter/app/lib/router.dart` | GoRouter registry — add a `GoRoute` here for every migrated screen |
+| `design_system`: `AppScaffold`, `AppDialog`, `AppLoadingSpinner`, `AppErrorView` | Screen-level primitives; use instead of raw Scaffold/AlertDialog on all migrated screens |
+
+#### Adding a new migrated screen (Phase 2 procedure)
+
+1. Create `flutter/packages/feature_<name>/` with `flutter create --template=package`
+2. Add providers in `flutter/packages/core/lib/src/providers/<name>_provider.dart`
+3. Build the screen using only `design_system` components; all data via Riverpod
+4. Add a `GoRoute(path: '/<name>', ...)` in `flutter/app/lib/router.dart`
+5. Add `"/<name>"` to `kFlutterRoutes` in `NavigationBridge.cpp`
+6. Add the feature package as a dependency in `flutter/app/pubspec.yaml`
+7. Shadow the Qt screen for one sprint, then delete it
 
 ### Known WASM quirks
 

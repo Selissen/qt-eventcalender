@@ -22,6 +22,7 @@ ApplicationWindow {
     property bool weekViewActive: false
     property date displayDate: currentDate
     property bool sidebarOpen: false
+    property bool flutterActive: false
 
     function navigatePrev() {
         displayDate = CalendarUtils.navigatePrev(displayDate, weekViewActive)
@@ -37,7 +38,15 @@ ApplicationWindow {
             anchors.leftMargin: 4
             anchors.rightMargin: 4
 
+            // Back button — only shown while Flutter is covering the content area.
             ToolButton {
+                visible: window.flutterActive
+                text: qsTr("\u2190 Back")
+                onClicked: navBridge.navigateToQt()
+            }
+
+            ToolButton {
+                visible: !window.flutterActive
                 text: "\u2039"
                 font.pixelSize: Qt.application.font.pixelSize * 1.5
                 onClicked: window.navigatePrev()
@@ -45,7 +54,7 @@ ApplicationWindow {
 
             // Month view: month + year label
             Label {
-                visible: !window.weekViewActive
+                visible: !window.flutterActive && !window.weekViewActive
                 text: window.displayDate.toLocaleString(Qt.locale(), "MMMM yyyy")
                 font.pixelSize: Qt.application.font.pixelSize * 1.25
                 horizontalAlignment: Text.AlignHCenter
@@ -54,7 +63,7 @@ ApplicationWindow {
 
             // Week view: sliding strip of clickable week numbers
             Row {
-                visible: window.weekViewActive
+                visible: !window.flutterActive && window.weekViewActive
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 0
@@ -80,24 +89,34 @@ ApplicationWindow {
                 }
             }
 
+            // Spacer when Flutter is active (keeps back button left-aligned).
+            Item {
+                visible: window.flutterActive
+                Layout.fillWidth: true
+            }
+
             ToolButton {
+                visible: !window.flutterActive
                 text: "\u203a"
                 font.pixelSize: Qt.application.font.pixelSize * 1.5
                 onClicked: window.navigateNext()
             }
 
             ToolButton {
+                visible: !window.flutterActive
                 text: qsTr("Today")
                 enabled: window.displayDate.toDateString() !== window.currentDate.toDateString()
                 onClicked: window.displayDate = window.currentDate
             }
 
             ToolButton {
+                visible: !window.flutterActive
                 text: window.weekViewActive ? qsTr("Month") : qsTr("Week")
                 onClicked: window.weekViewActive = !window.weekViewActive
             }
 
             ToolButton {
+                visible: !window.flutterActive
                 text: qsTr("Plans")
                 font.bold: window.sidebarOpen
                 onClicked: window.sidebarOpen = !window.sidebarOpen
@@ -105,16 +124,29 @@ ApplicationWindow {
 
             // Flutter toggle — only visible when the embedding is active.
             ToolButton {
-                visible: typeof navBridge !== "undefined"
+                visible: !window.flutterActive && typeof navBridge !== "undefined"
                 text: qsTr("Flutter")
                 onClicked: navBridge.navigateTo("/widget-catalog")
             }
         }
     }
 
+    // Flutter view — overlays the content area when a Flutter route is active.
+    // anchors.fill: parent fills the ApplicationWindow's contentItem, which
+    // is the area below the header, so the toolbar stays visible.
+    // FlutterView.geometryChange() maps this rect to the Win32 HWND.
+    FlutterView {
+        id: flutterView
+        visible: false
+        anchors.fill: parent
+        bridge: typeof navBridge !== "undefined" ? navBridge : null
+        onVisibleChanged: window.flutterActive = visible
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
+        enabled: !window.flutterActive
 
         // ── Unit filter sidebar ──────────────────────────────────────────
         UnitFilterSidebar {
@@ -122,10 +154,19 @@ ApplicationWindow {
             Layout.fillHeight: true
         }
 
+        // ── Map view — visible when the sidebar is in add/edit mode ─────────
+        FlutterMapItem {
+            id: mapView
+            visible: sidebar.isEditing && typeof navBridge !== "undefined"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+        }
+
         // ── Calendar views + footer ──────────────────────────────────────
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: !sidebar.isEditing
             spacing: 0
 
             StackLayout {
@@ -178,6 +219,8 @@ ApplicationWindow {
                 planDatabase:   window.planDatabase
                 displayDate:    window.displayDate
                 weekViewActive: window.weekViewActive
+                onRouteSelectionChanged: (allRoutes, selectedIds) =>
+                    mapView.updateRoutes(allRoutes, selectedIds)
             }
         }
     }
