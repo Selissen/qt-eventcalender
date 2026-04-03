@@ -30,7 +30,11 @@ ComponentBridge::~ComponentBridge()
 
 void ComponentBridge::send(const QString& method, const QJsonObject& args)
 {
-    if (!messenger_) return;
+    if (!messenger_) {
+        emit sendFailed(QStringLiteral("Messenger not available on channel '%1'")
+                            .arg(QString::fromStdString(channel_)));
+        return;
+    }
 
     QJsonObject envelope;
     envelope[QStringLiteral("method")] = method;

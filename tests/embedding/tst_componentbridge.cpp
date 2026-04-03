@@ -104,7 +104,27 @@ private slots:
         }
     }
 
-    // ── 4. Destructor clears the channel callback (sets it to nullptr) ─────
+    // ── 4. send() with null messenger emits sendFailed ────────────────────
+    // Constructing a ComponentBridge with a nullptr engine gives a null
+    // messenger (the stub returns nullptr for GetMessenger(nullptr)).
+    // send() must emit sendFailed rather than crashing or silently dropping.
+    void sendWithNullMessengerEmitsSendFailed()
+    {
+        // nullptr engine → stub returns nullptr messenger
+        ComponentBridge bridge(nullptr, QStringLiteral("com.eventcalendar/test"));
+
+        QSignalSpy spy(&bridge, &ComponentBridge::sendFailed);
+        QVERIFY(spy.isValid());
+
+        bridge.send(QStringLiteral("ping"), {});
+
+        QCOMPARE(spy.count(), 1);
+        QVERIFY(!spy.first()[0].toString().isEmpty());
+        // Nothing should have been sent to Flutter.
+        QVERIFY(FlutterStub::takeSends().isEmpty());
+    }
+
+    // ── 5. Destructor clears the channel callback (sets it to nullptr) ─────
     // Specification test: ComponentBridge MUST call
     //   FlutterDesktopMessengerSetCallback(messenger_, channel, nullptr, nullptr)
     // in its destructor so dangling pointers are never invoked after the bridge

@@ -35,7 +35,9 @@ void FlutterMapItem::ensureEngine()
         qRound(width()), qRound(height()));
 
     if (!controller_) {
-        qWarning("[FlutterMapItem] createController() failed.");
+        const QString reason = QStringLiteral("createController() failed for map component");
+        qWarning("[FlutterMapItem] %s.", qPrintable(reason));
+        emit engineError(reason);
         return;
     }
 

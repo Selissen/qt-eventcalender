@@ -50,6 +50,11 @@ public:
     /// Messenger for sending to Flutter channels (e.g. FlutterDesktopMessengerSend).
     FlutterDesktopMessengerRef messenger() const;
 
+signals:
+    /// Emitted when initialize() fails, in addition to the qWarning() log.
+    /// Connect to show a fallback UI or log to telemetry.
+    void initializationFailed(const QString& reason);
+
 private:
     FlutterDesktopEngineRef          engine_           = nullptr;
     FlutterDesktopViewControllerRef  controller_       = nullptr;

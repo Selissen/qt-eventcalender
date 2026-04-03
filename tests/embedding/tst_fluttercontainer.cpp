@@ -86,7 +86,39 @@ private slots:
                  "messenger() must return nullptr before initialize()");
     }
 
-    // ── 7. A second initialize() on the same container returns false ───────
+    // ── 7. Engine create failure emits initializationFailed signal ───────────
+    void engineCreateFailureEmitsSignal()
+    {
+        FlutterStub::failNextEngineCreate();
+
+        FlutterContainer container;
+        QSignalSpy spy(&container, &FlutterContainer::initializationFailed);
+        QVERIFY(spy.isValid());
+
+        container.initialize(QStringLiteral("flutter_assets"),
+                             QStringLiteral("icudtl.dat"));
+
+        QCOMPARE(spy.count(), 1);
+        QVERIFY(!spy.first()[0].toString().isEmpty());
+    }
+
+    // ── 8. Controller create failure emits initializationFailed signal ───────
+    void controllerCreateFailureEmitsSignal()
+    {
+        FlutterStub::failNextControllerCreate();
+
+        FlutterContainer container;
+        QSignalSpy spy(&container, &FlutterContainer::initializationFailed);
+        QVERIFY(spy.isValid());
+
+        container.initialize(QStringLiteral("flutter_assets"),
+                             QStringLiteral("icudtl.dat"));
+
+        QCOMPARE(spy.count(), 1);
+        QVERIFY(!spy.first()[0].toString().isEmpty());
+    }
+
+    // ── 9. A second initialize() on the same container returns false ───────
     // FlutterContainer holds a single engine/controller; calling initialize()
     // again while already initialised would leak resources.  The guard must
     // detect that engine_ is already set and return false.

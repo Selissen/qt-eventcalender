@@ -66,6 +66,9 @@ signals:
     void readyChanged();
     /// Emitted for every message the Flutter component sends back.
     void messageReceived(const QString& method, const QVariantMap& args);
+    /// Emitted when the Flutter engine fails to start for this component.
+    /// Connect to show a fallback UI or hide the item.
+    void engineError(const QString& reason);
 
 protected:
     void geometryChange(const QRectF& newGeom, const QRectF& oldGeom) override;

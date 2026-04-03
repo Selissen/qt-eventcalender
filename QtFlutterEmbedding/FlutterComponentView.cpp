@@ -67,8 +67,10 @@ void FlutterComponentView::ensureEngine()
         qRound(width()), qRound(height()));
 
     if (!controller_) {
-        qWarning("[FlutterComponentView] createController() failed for '%s'.",
-                 qPrintable(entrypoint_));
+        const QString reason =
+            QStringLiteral("createController() failed for '%1'").arg(entrypoint_);
+        qWarning("[FlutterComponentView] %s.", qPrintable(reason));
+        emit engineError(reason);
         return;
     }
 

@@ -43,6 +43,9 @@ signals:
     /// Emitted when the user taps a route marker on the Flutter map.
     /// Connect this in QML to toggle the matching checkbox in EventSidebar.
     void routeToggled(int routeId);
+    /// Emitted when the Flutter map engine fails to start.
+    /// Connect in QML (onEngineError) to hide the map area or show a fallback.
+    void engineError(const QString& reason);
 
 protected:
     void geometryChange(const QRectF& newGeom, const QRectF& oldGeom) override;

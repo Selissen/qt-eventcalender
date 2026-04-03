@@ -26,18 +26,21 @@ bool FlutterContainer::initialize(const QString& assetsPath,
 
     engine_ = FlutterDesktopEngineCreate(&props);
     if (!engine_) {
-        qWarning("[FlutterContainer] FlutterDesktopEngineCreate failed — "
-                 "check assets_path ('%ls') and icu_data_path ('%ls').",
-                 assets.c_str(), icu.c_str());
+        const QString reason = QStringLiteral("FlutterDesktopEngineCreate failed");
+        qWarning("[FlutterContainer] %s — check assets_path ('%ls') and icu_data_path ('%ls').",
+                 qPrintable(reason), assets.c_str(), icu.c_str());
+        emit initializationFailed(reason);
         return false;
     }
 
     // Initial size 0×0; positioned later via moveToRect() from FlutterView.
     controller_ = FlutterDesktopViewControllerCreate(0, 0, engine_);
     if (!controller_) {
-        qWarning("[FlutterContainer] FlutterDesktopViewControllerCreate failed.");
+        const QString reason = QStringLiteral("FlutterDesktopViewControllerCreate failed");
+        qWarning("[FlutterContainer] %s.", qPrintable(reason));
         FlutterDesktopEngineDestroy(engine_);
         engine_ = nullptr;
+        emit initializationFailed(reason);
         return false;
     }
 

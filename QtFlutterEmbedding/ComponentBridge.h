@@ -33,6 +33,8 @@ public:
 signals:
     /// Emitted when the Flutter component sends a message back.
     void messageReceived(const QString& method, const QJsonObject& args);
+    /// Emitted when send() cannot deliver a message (e.g. messenger not available).
+    void sendFailed(const QString& reason);
 
 private:
     static void onMessage(FlutterDesktopMessengerRef messenger,
