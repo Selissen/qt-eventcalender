@@ -23,6 +23,8 @@ public:
     explicit ComponentBridge(FlutterDesktopEngineRef engine,
                              const QString& channel,
                              QObject* parent = nullptr);
+    /// Unregisters the channel callback so no messages arrive after destruction.
+    ~ComponentBridge() override;
 
     /// Send a method call to the Flutter component.
     /// Encoded as JSON: { "method": method, "args": args }

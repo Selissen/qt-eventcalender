@@ -18,6 +18,13 @@ FlutterComponentView::FlutterComponentView(QQuickItem* parent)
 FlutterComponentView::~FlutterComponentView()
 {
     if (loopTimer_) loopTimer_->stop();
+    // Unregister the messenger callback before destroying the controller so
+    // no in-flight message can arrive after bridge_ is freed.
+    if (bridge_) {
+        bridge_->setParent(nullptr);
+        delete bridge_;
+        bridge_ = nullptr;
+    }
     if (controller_) FlutterDesktopViewControllerDestroy(controller_);
 }
 
@@ -108,9 +115,17 @@ void FlutterComponentView::ensureEngine()
            qPrintable(entrypoint_), qPrintable(channel_));
 }
 
+static constexpr int kMaxPendingMessages = 256;
+
 void FlutterComponentView::send(const QString& method, const QVariantMap& args)
 {
     if (!bridge_ || !dartReady_) {
+        if (pending_.size() >= kMaxPendingMessages) {
+            qWarning("[FlutterComponentView] pending queue full (%d) for '%s' "
+                     "— dropping oldest message.",
+                     kMaxPendingMessages, qPrintable(entrypoint_));
+            pending_.removeFirst();
+        }
         pending_.append({ method, args });
         return;
     }

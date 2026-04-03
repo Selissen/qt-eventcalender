@@ -2,6 +2,8 @@
 
 #include "ComponentEngineFactory.h"
 #include <QDebug>
+#include <QDir>
+#include <QFile>
 
 FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString& assetsPath,
@@ -11,6 +13,25 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     int initialWidth,
     int initialHeight)
 {
+    if (assetsPath.isEmpty() || icuDataPath.isEmpty()) {
+        qWarning("[ComponentEngineFactory] assetsPath and icuDataPath must not be empty.");
+        return nullptr;
+    }
+    if (entrypoint.isEmpty()) {
+        qWarning("[ComponentEngineFactory] entrypoint must not be empty.");
+        return nullptr;
+    }
+    if (!QDir(assetsPath).exists()) {
+        qWarning("[ComponentEngineFactory] flutter_assets not found at '%s'.",
+                 qPrintable(assetsPath));
+        return nullptr;
+    }
+    if (!QFile::exists(icuDataPath)) {
+        qWarning("[ComponentEngineFactory] icudtl.dat not found at '%s'.",
+                 qPrintable(icuDataPath));
+        return nullptr;
+    }
+
     // Lifetime: wstring temporaries must outlive FlutterDesktopEngineCreate.
     const std::wstring assets = assetsPath.toStdWString();
     const std::wstring icu    = icuDataPath.toStdWString();
@@ -26,7 +47,8 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     FlutterDesktopEngineRef engine = FlutterDesktopEngineCreate(&props);
     if (!engine) {
         qWarning("[ComponentEngineFactory] FlutterDesktopEngineCreate failed "
-                 "for entrypoint: %s", qPrintable(entrypoint));
+                 "for entrypoint '%s' (assets: '%s').",
+                 qPrintable(entrypoint), qPrintable(assetsPath));
         return nullptr;
     }
 
@@ -34,7 +56,7 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
         FlutterDesktopViewControllerCreate(initialWidth, initialHeight, engine);
     if (!controller) {
         qWarning("[ComponentEngineFactory] FlutterDesktopViewControllerCreate "
-                 "failed for entrypoint: %s", qPrintable(entrypoint));
+                 "failed for entrypoint '%s'.", qPrintable(entrypoint));
         FlutterDesktopEngineDestroy(engine);
         return nullptr;
     }

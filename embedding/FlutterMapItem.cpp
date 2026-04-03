@@ -3,6 +3,7 @@
 #include "FlutterMapItem.h"
 #include "ComponentBridge.h"
 #include "ComponentEngineFactory.h"
+#include "flutter_constants.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -18,6 +19,12 @@ FlutterMapItem::FlutterMapItem(QQuickItem* parent)
 FlutterMapItem::~FlutterMapItem()
 {
     if (loopTimer_) loopTimer_->stop();
+    // Unregister the messenger callback before destroying the controller.
+    if (bridge_) {
+        bridge_->setParent(nullptr);
+        delete bridge_;
+        bridge_ = nullptr;
+    }
     if (controller_) FlutterDesktopViewControllerDestroy(controller_);
 }
 
@@ -63,7 +70,7 @@ void FlutterMapItem::ensureEngine()
     // Wire the ComponentBridge for bidirectional JSON messages.
     bridge_ = new ComponentBridge(
         FlutterDesktopViewControllerGetEngine(controller_),
-        QStringLiteral("com.eventcalendar/map"),
+        QLatin1String(FlutterChannels::kMap),
         this);
 
     // Flutter sends {"method":"ready"} after its first frame, indicating the

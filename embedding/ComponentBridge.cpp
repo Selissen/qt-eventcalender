@@ -11,12 +11,27 @@ ComponentBridge::ComponentBridge(FlutterDesktopEngineRef engine,
       messenger_(FlutterDesktopEngineGetMessenger(engine)),
       channel_(channel.toStdString())
 {
-    FlutterDesktopMessengerSetCallback(
-        messenger_, channel_.c_str(), onMessage, this);
+    if (messenger_)
+        FlutterDesktopMessengerSetCallback(
+            messenger_, channel_.c_str(), onMessage, this);
+    else
+        qWarning("[ComponentBridge] engine returned null messenger for '%s'",
+                 channel_.c_str());
+}
+
+ComponentBridge::~ComponentBridge()
+{
+    // Unregister before the engine/messenger is torn down so no in-flight
+    // callbacks arrive after this object is freed.
+    if (messenger_)
+        FlutterDesktopMessengerSetCallback(
+            messenger_, channel_.c_str(), nullptr, nullptr);
 }
 
 void ComponentBridge::send(const QString& method, const QJsonObject& args)
 {
+    if (!messenger_) return;
+
     QJsonObject envelope;
     envelope[QStringLiteral("method")] = method;
     envelope[QStringLiteral("args")]   = args;
@@ -34,10 +49,22 @@ void ComponentBridge::onMessage(FlutterDesktopMessengerRef,
                                 const FlutterDesktopMessage* message,
                                 void* user_data)
 {
+    if (!user_data || !message || message->message_size == 0) return;
+
     auto* self = static_cast<ComponentBridge*>(user_data);
     const QByteArray raw(reinterpret_cast<const char*>(message->message),
                          static_cast<int>(message->message_size));
-    const QJsonObject obj = QJsonDocument::fromJson(raw).object();
+
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
+    if (doc.isNull()) {
+        qWarning("[ComponentBridge] invalid JSON on channel '%s': %s",
+                 message->channel ? message->channel : "?",
+                 qPrintable(err.errorString()));
+        return;
+    }
+
+    const QJsonObject obj = doc.object();
     emit self->messageReceived(
         obj.value(QStringLiteral("method")).toString(),
         obj.value(QStringLiteral("args")).toObject());

@@ -2,6 +2,7 @@
 
 #include "FlutterWidgetProxy.h"
 #include <QResizeEvent>
+#include <QDebug>
 #include <windows.h>
 
 FlutterWidgetProxy::FlutterWidgetProxy(FlutterDesktopViewControllerRef controller,
@@ -14,6 +15,12 @@ FlutterWidgetProxy::FlutterWidgetProxy(FlutterDesktopViewControllerRef controlle
 
 void FlutterWidgetProxy::activate()
 {
+    if (flutter_window_) return; // Already activated — idempotent.
+    if (!controller_) {
+        qWarning("[FlutterWidgetProxy] activate() called with null controller.");
+        return;
+    }
+
     HWND hwnd = FlutterDesktopViewGetHWND(
         FlutterDesktopViewControllerGetView(controller_));
 

@@ -21,9 +21,14 @@
 class FlutterContainer : public QObject {
     Q_OBJECT
 public:
+    enum class State { Uninitialized, Initialized, Embedded };
+
     explicit FlutterContainer(QObject* parent = nullptr);
     ~FlutterContainer() override;
 
+    State state() const { return state_; }
+
+    /// Returns false (no-op) if already initialized.
     bool initialize(const QString& assetsPath,
                     const QString& icuDataPath,
                     const QString& aotLibraryPath = {});
@@ -50,6 +55,7 @@ private:
     FlutterDesktopViewControllerRef  controller_       = nullptr;
     QTimer*                          loop_timer_       = nullptr;
     bool                             embedded_visible_ = false;
+    State                            state_            = State::Uninitialized;
 };
 
 #endif // Q_OS_WASM

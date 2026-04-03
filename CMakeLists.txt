@@ -14,13 +14,20 @@ if(NOT EMSCRIPTEN)
 endif()
 
 qt_add_library(eventcalendar_lib STATIC
-    calendarutils.cpp calendarutils.h
-    datetimeutils.cpp datetimeutils.h
-    plan.h
-    planmodel.cpp planmodel.h
-    plansyncmanager.cpp plansyncmanager.h
-    sqlplandatabase.cpp sqlplandatabase.h
-    syncbackend.h
+    utils/calendarutils.cpp utils/calendarutils.h
+    utils/datetimeutils.cpp utils/datetimeutils.h
+    models/plan.h
+    models/planmodel.cpp models/planmodel.h
+    sync/plansyncmanager.cpp sync/plansyncmanager.h
+    models/sqlplandatabase.cpp models/sqlplandatabase.h
+    sync/syncbackend.h
+)
+
+# Subdirectory headers are found via bare #include "Foo.h" through these paths.
+target_include_directories(eventcalendar_lib PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/models"
+    "${CMAKE_CURRENT_SOURCE_DIR}/utils"
+    "${CMAKE_CURRENT_SOURCE_DIR}/sync"
 )
 
 # Qt 6.8+ requires qmldir files in each QML subdirectory for the engine to
@@ -30,16 +37,16 @@ qt_policy(SET QTP0004 NEW)
 qt_add_qml_module(eventcalendar_lib
     URI App
     QML_FILES
-        atoms/CalendarRange.qml
-        atoms/DatePickerField.qml
-        molecules/MonthGridDelegate.qml
-        molecules/WeekPlanCell.qml
-        organisms/EventSidebar.qml
-        organisms/PlanFooter.qml
-        organisms/UnitFilterSidebar.qml
-        templates/MonthView.qml
-        templates/WeekView.qml
-        pages/eventcalendar.qml
+        qml/atoms/CalendarRange.qml
+        qml/atoms/DatePickerField.qml
+        qml/molecules/MonthGridDelegate.qml
+        qml/molecules/WeekPlanCell.qml
+        qml/organisms/EventSidebar.qml
+        qml/organisms/PlanFooter.qml
+        qml/organisms/UnitFilterSidebar.qml
+        qml/templates/MonthView.qml
+        qml/templates/WeekView.qml
+        qml/pages/eventcalendar.qml
     RESOURCES
         qtquickcontrols2.conf
 )
@@ -85,7 +92,7 @@ if(Qt6Protobuf_FOUND AND Qt6Grpc_FOUND)
         target_link_libraries(calendar_grpc PRIVATE calendar_proto)
     endif()
 
-    target_sources(eventcalendar_lib PRIVATE grpcsyncbackend.cpp grpcsyncbackend.h)
+    target_sources(eventcalendar_lib PRIVATE sync/grpcsyncbackend.cpp sync/grpcsyncbackend.h)
     target_link_libraries(eventcalendar_lib PUBLIC
         Qt6::Protobuf Qt6::Grpc calendar_proto calendar_grpc)
     target_include_directories(eventcalendar_lib PUBLIC
@@ -93,15 +100,15 @@ if(Qt6Protobuf_FOUND AND Qt6Grpc_FOUND)
 
     if(EMSCRIPTEN)
         target_sources(eventcalendar_lib PRIVATE
-            qgrpcwebchannel.cpp qgrpcwebchannel.h
-            grpcchannel_web.cpp)
+            sync/qgrpcwebchannel.cpp sync/qgrpcwebchannel.h
+            sync/grpcchannel_web.cpp)
         message(STATUS "[EventCalendar] WASM — gRPC-Web sync backend selected (requires Envoy proxy)")
     else()
-        target_sources(eventcalendar_lib PRIVATE grpcchannel_http2.cpp)
+        target_sources(eventcalendar_lib PRIVATE sync/grpcchannel_http2.cpp)
         message(STATUS "[EventCalendar] Desktop — gRPC/HTTP-2 sync backend selected")
     endif()
 else()
-    target_sources(eventcalendar_lib PRIVATE noopsyncbackend.cpp noopsyncbackend.h)
+    target_sources(eventcalendar_lib PRIVATE sync/noopsyncbackend.cpp sync/noopsyncbackend.h)
     message(STATUS "[EventCalendar] Qt6::Protobuf/Grpc not found — no-op sync backend. "
                    "Install qt.qt6.6110.addons.qtgrpc via the Qt Online Installer to enable gRPC.")
 endif()
@@ -161,18 +168,22 @@ target_link_libraries(eventcalendar PRIVATE eventcalendar_lib eventcalendar_libp
 
 if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
     target_sources(eventcalendar PRIVATE
-        FlutterContainer.cpp
-        FlutterFocusFilter.cpp
-        FlutterView.cpp
-        FlutterWidgetProxy.cpp
-        FlutterComponentView.cpp
-        ComponentBridge.cpp
-        ComponentEngineFactory.cpp
-        NavigationBridge.cpp
+        embedding/FlutterContainer.cpp
+        embedding/FlutterFocusFilter.cpp
+        embedding/FlutterView.cpp
+        embedding/FlutterWidgetProxy.cpp
+        embedding/FlutterComponentView.cpp
+        embedding/FlutterMapItem.cpp
+        embedding/ComponentBridge.cpp
+        embedding/ComponentEngineFactory.cpp
+        embedding/NavigationBridge.cpp
     )
     # Explicit include so moc (autogen step) can resolve flutter_windows.h
     # before the imported-target INTERFACE propagates.
-    target_include_directories(eventcalendar PRIVATE "${FLUTTER_ENGINE_DIR}")
+    target_include_directories(eventcalendar PRIVATE
+        "${FLUTTER_ENGINE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/embedding"
+    )
     target_link_libraries(eventcalendar PRIVATE flutter_windows Qt6::Widgets)
     target_compile_definitions(eventcalendar PRIVATE EC_FLUTTER_EMBED_ENABLED)
 

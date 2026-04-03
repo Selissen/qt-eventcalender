@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Qt 6 Quick Controls 2 (Material theme) calendar app. Plans (events) are stored in SQLite via `QSqlDatabase`. The app targets both desktop (Windows/macOS) and WebAssembly.
 
-A parallel Flutter migration is underway using the **Strangler Fig pattern** (see `FLUTTER.md`). Phase 0 (embedding validated) and Phase 1 (embedded inside Qt window + navigation bridge) are complete. The Flutter layer lives under `flutter/` and is only active on desktop when `EC_FLUTTER_EMBED_ENABLED=ON`.
+A parallel Flutter migration is underway using the **Strangler Fig pattern** (see `doc/FLUTTER.md`). Phase 0 (embedding validated) and Phase 1 (embedded inside Qt window + navigation bridge) are complete. The Flutter layer lives under `flutter/` and is only active on desktop when `EC_FLUTTER_EMBED_ENABLED=ON`.
 
 ## Verification requirements
 

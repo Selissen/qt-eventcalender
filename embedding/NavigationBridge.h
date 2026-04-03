@@ -2,6 +2,7 @@
 #ifndef Q_OS_WASM
 
 #include <QObject>
+#include <QPointer>
 #include <QVariantMap>
 #include <flutter_messenger.h>
 
@@ -33,6 +34,7 @@ public:
     Q_INVOKABLE void setFlutterVisible(bool visible);
 
     /// Navigate to a Flutter-owned go_router route, e.g. "/plans".
+    /// Empty or unknown-format routes are rejected without emitting signals.
     Q_INVOKABLE void navigateTo(const QString& route,
                                 const QVariantMap& params = {});
 
@@ -48,8 +50,10 @@ signals:
     void returnedToQt();
 
 private:
-    FlutterContainer* flutter_     = nullptr;
-    QQuickItem*       flutterView_ = nullptr;
+    // QPointer auto-nullifies if the pointee QObject is deleted, preventing
+    // use-after-free when either object outlives the other.
+    QPointer<FlutterContainer> flutter_;
+    QPointer<QQuickItem>       flutterView_;
 };
 
 #endif // Q_OS_WASM

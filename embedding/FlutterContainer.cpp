@@ -10,6 +10,11 @@ bool FlutterContainer::initialize(const QString& assetsPath,
                                   const QString& icuDataPath,
                                   const QString& aotLibraryPath)
 {
+    if (state_ != State::Uninitialized) {
+        qWarning("[FlutterContainer] initialize() called more than once — ignored.");
+        return false;
+    }
+
     const std::wstring assets = assetsPath.toStdWString();
     const std::wstring icu    = icuDataPath.toStdWString();
     const std::wstring aot    = aotLibraryPath.toStdWString();
@@ -21,14 +26,16 @@ bool FlutterContainer::initialize(const QString& assetsPath,
 
     engine_ = FlutterDesktopEngineCreate(&props);
     if (!engine_) {
-        qWarning("[Flutter] FlutterDesktopEngineCreate failed.");
+        qWarning("[FlutterContainer] FlutterDesktopEngineCreate failed — "
+                 "check assets_path ('%ls') and icu_data_path ('%ls').",
+                 assets.c_str(), icu.c_str());
         return false;
     }
 
     // Initial size 0×0; positioned later via moveToRect() from FlutterView.
     controller_ = FlutterDesktopViewControllerCreate(0, 0, engine_);
     if (!controller_) {
-        qWarning("[Flutter] FlutterDesktopViewControllerCreate failed.");
+        qWarning("[FlutterContainer] FlutterDesktopViewControllerCreate failed.");
         FlutterDesktopEngineDestroy(engine_);
         engine_ = nullptr;
         return false;
@@ -42,11 +49,18 @@ bool FlutterContainer::initialize(const QString& assetsPath,
     });
     loop_timer_->start(16);
 
+    state_ = State::Initialized;
     return true;
 }
 
 bool FlutterContainer::embedInto(HWND parentHwnd)
 {
+    if (state_ != State::Initialized) {
+        qWarning("[FlutterContainer] embedInto() called in wrong state "
+                 "(must call initialize() first).");
+        return false;
+    }
+
     HWND hwnd = flutterHwnd();
     if (!hwnd || !parentHwnd)
         return false;
@@ -56,23 +70,29 @@ bool FlutterContainer::embedInto(HWND parentHwnd)
     LONG style = ::GetWindowLong(hwnd, GWL_STYLE);
     style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_OVERLAPPEDWINDOW))
             | WS_CHILD;
-    ::SetWindowLong(hwnd, GWL_STYLE, style);
-    ::SetParent(hwnd, parentHwnd);
+    if (!::SetWindowLong(hwnd, GWL_STYLE, style))
+        qWarning("[FlutterContainer] SetWindowLong failed: %lu", ::GetLastError());
+    if (!::SetParent(hwnd, parentHwnd))
+        qWarning("[FlutterContainer] SetParent failed: %lu", ::GetLastError());
+
     // Start hidden; NavigationBridge calls showEmbedded() on first navigation.
     ::ShowWindow(hwnd, SW_HIDE);
     embedded_visible_ = false;
 
+    state_ = State::Embedded;
     return true;
 }
 
 void FlutterContainer::moveToRect(int x, int y, int w, int h)
 {
+    if (state_ == State::Uninitialized) return;
     if (HWND hwnd = flutterHwnd())
         ::MoveWindow(hwnd, x, y, w, h, TRUE);
 }
 
 void FlutterContainer::showEmbedded()
 {
+    if (state_ == State::Uninitialized) return;
     if (HWND hwnd = flutterHwnd()) {
         ::ShowWindow(hwnd, SW_SHOW);
         ::SetFocus(hwnd);
@@ -82,6 +102,7 @@ void FlutterContainer::showEmbedded()
 
 void FlutterContainer::hideEmbedded()
 {
+    if (state_ == State::Uninitialized) return;
     if (HWND hwnd = flutterHwnd()) {
         ::ShowWindow(hwnd, SW_HIDE);
         embedded_visible_ = false;

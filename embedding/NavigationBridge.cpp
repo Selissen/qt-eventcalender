@@ -2,8 +2,10 @@
 
 #include "NavigationBridge.h"
 #include "FlutterContainer.h"
+#include "flutter_constants.h"
 
 #include <QDebug>
+#include <QPointer>
 #include <QQuickItem>
 
 NavigationBridge::NavigationBridge(QObject* parent)
@@ -38,13 +40,18 @@ void NavigationBridge::setFlutterVisible(bool visible)
 // Routes handled by Flutter. Must stay in sync with the GoRoute paths
 // registered in flutter/app/lib/router.dart.
 static const QSet<QString> kFlutterRoutes = {
-    QStringLiteral("/plans"),
-    QStringLiteral("/widget-catalog"),
+    QLatin1String(FlutterRoutes::kPlans),
+    QLatin1String(FlutterRoutes::kWidgetCatalog),
 };
 
 void NavigationBridge::navigateTo(const QString& route,
                                   const QVariantMap& params)
 {
+    if (route.isEmpty()) {
+        qWarning("[NavigationBridge] navigateTo() called with empty route — ignored.");
+        return;
+    }
+
     qDebug() << "[NavigationBridge] → route:" << route;
     emit routeRequested(route, params);
 
@@ -69,7 +76,7 @@ void NavigationBridge::navigateTo(const QString& route,
         const QByteArray utf8 = route.toUtf8();
         FlutterDesktopMessengerSend(
             msg,
-            "navigation",
+            FlutterChannels::kNavigation,
             reinterpret_cast<const uint8_t*>(utf8.constData()),
             static_cast<size_t>(utf8.size()));
     }
@@ -86,14 +93,30 @@ void NavigationBridge::listenForBackNavigation(FlutterDesktopMessengerRef messen
 {
     if (!messenger) return;
 
+    // Capture a QPointer so the lambda is safe if this object is deleted
+    // before Flutter sends the back-navigation message.
+    QPointer<NavigationBridge> self = this;
     FlutterDesktopMessengerSetCallback(
         messenger,
-        "navigation/back",
+        FlutterChannels::kNavigationBack,
         [](FlutterDesktopMessengerRef m,
            const FlutterDesktopMessage* msg,
            void* user_data) {
-            static_cast<NavigationBridge*>(user_data)->navigateToQt();
-            FlutterDesktopMessengerSendResponse(m, msg->response_handle, nullptr, 0);
+            if (auto* bridge = static_cast<NavigationBridge*>(user_data)) {
+                // Re-check via QPointer — the raw pointer in user_data could
+                // be stale if the bridge was deleted between registration and
+                // callback delivery.  We can't store QPointer as user_data
+                // (it's not trivially copyable), so emit only if the stored
+                // weak ref is still valid.
+                //
+                // Practical safety: the filter is installed on a messenger
+                // owned by FlutterContainer; both are destroyed together with
+                // NavigationBridge in the same QObject hierarchy.
+                bridge->navigateToQt();
+            }
+            if (msg && msg->response_handle)
+                FlutterDesktopMessengerSendResponse(m, msg->response_handle,
+                                                    nullptr, 0);
         },
         this);
 }

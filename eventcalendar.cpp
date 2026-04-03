@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<FlutterComponentView>("App", 1, 0, "FlutterComponentView");
 #endif // EC_FLUTTER_EMBED_ENABLED
 
-    const QUrl url(QStringLiteral("qrc:/App/pages/eventcalendar.qml"));
+    const QUrl url(QStringLiteral("qrc:/App/qml/pages/eventcalendar.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [&](QObject* obj, const QUrl& objUrl) {
         if (!obj && url == objUrl) {
