@@ -34,6 +34,17 @@
       ]
     },
     {
+      "name": "flutter_riverpod",
+      "version": "2.6.1",
+      "dependencies": [
+        "collection",
+        "flutter",
+        "meta",
+        "riverpod",
+        "state_notifier"
+      ]
+    },
+    {
       "name": "flutter",
       "version": "0.0.0",
       "dependencies": [
@@ -43,6 +54,27 @@
         "meta",
         "sky_engine",
         "vector_math"
+      ]
+    },
+    {
+      "name": "riverpod_annotation",
+      "version": "2.6.1",
+      "dependencies": [
+        "meta",
+        "riverpod"
+      ]
+    },
+    {
+      "name": "dio",
+      "version": "5.9.2",
+      "dependencies": [
+        "async",
+        "collection",
+        "dio_web_adapter",
+        "http_parser",
+        "meta",
+        "mime",
+        "path"
       ]
     },
     {
@@ -71,89 +103,10 @@
       ]
     },
     {
-      "name": "vector_math",
-      "version": "2.2.0",
-      "dependencies": []
-    },
-    {
-      "name": "sky_engine",
-      "version": "0.0.0",
-      "dependencies": []
-    },
-    {
-      "name": "meta",
-      "version": "1.17.0",
-      "dependencies": []
-    },
-    {
-      "name": "material_color_utilities",
-      "version": "0.13.0",
+      "name": "state_notifier",
+      "version": "1.0.0",
       "dependencies": [
-        "collection"
-      ]
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
-      "dependencies": []
-    },
-    {
-      "name": "characters",
-      "version": "1.4.1",
-      "dependencies": []
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "fixnum",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "http2",
-      "version": "2.3.1",
-      "dependencies": []
-    },
-    {
-      "name": "clock",
-      "version": "1.1.2",
-      "dependencies": []
-    },
-    {
-      "name": "google_identity_services_web",
-      "version": "0.3.3+1",
-      "dependencies": [
-        "meta",
-        "web"
-      ]
-    },
-    {
-      "name": "crypto",
-      "version": "3.0.7",
-      "dependencies": [
-        "typed_data"
-      ]
-    },
-    {
-      "name": "async",
-      "version": "2.13.1",
-      "dependencies": [
-        "collection",
         "meta"
-      ]
-    },
-    {
-      "name": "flutter_riverpod",
-      "version": "2.6.1",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "meta",
-        "riverpod",
-        "state_notifier"
       ]
     },
     {
@@ -167,18 +120,103 @@
       ]
     },
     {
-      "name": "state_notifier",
-      "version": "1.0.0",
+      "name": "meta",
+      "version": "1.17.0",
+      "dependencies": []
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
+    },
+    {
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "vector_math",
+      "version": "2.2.0",
+      "dependencies": []
+    },
+    {
+      "name": "material_color_utilities",
+      "version": "0.13.0",
       "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "characters",
+      "version": "1.4.1",
+      "dependencies": []
+    },
+    {
+      "name": "dio_web_adapter",
+      "version": "2.1.2",
+      "dependencies": [
+        "dio",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
+    },
+    {
+      "name": "mime",
+      "version": "2.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
+      "name": "async",
+      "version": "2.13.1",
+      "dependencies": [
+        "collection",
         "meta"
       ]
     },
     {
-      "name": "riverpod_annotation",
-      "version": "2.6.1",
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "clock",
+      "version": "1.1.2",
+      "dependencies": []
+    },
+    {
+      "name": "http2",
+      "version": "2.3.1",
+      "dependencies": []
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
       "dependencies": [
+        "async",
+        "http_parser",
         "meta",
-        "riverpod"
+        "web"
       ]
     },
     {
@@ -193,20 +231,10 @@
       ]
     },
     {
-      "name": "typed_data",
-      "version": "1.4.0",
+      "name": "crypto",
+      "version": "3.0.7",
       "dependencies": [
-        "collection"
-      ]
-    },
-    {
-      "name": "http",
-      "version": "1.6.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
-        "web"
+        "typed_data"
       ]
     },
     {
@@ -217,19 +245,11 @@
       ]
     },
     {
-      "name": "http_parser",
-      "version": "4.1.2",
+      "name": "typed_data",
+      "version": "1.4.0",
       "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
+        "collection"
       ]
-    },
-    {
-      "name": "path",
-      "version": "1.9.1",
-      "dependencies": []
     },
     {
       "name": "string_scanner",
@@ -237,11 +257,6 @@
       "dependencies": [
         "source_span"
       ]
-    },
-    {
-      "name": "args",
-      "version": "2.7.0",
-      "dependencies": []
     },
     {
       "name": "source_span",
@@ -253,36 +268,21 @@
       ]
     },
     {
-      "name": "term_glyph",
-      "version": "1.2.2",
-      "dependencies": []
-    },
-    {
-      "name": "dio",
-      "version": "5.9.2",
+      "name": "google_identity_services_web",
+      "version": "0.3.3+1",
       "dependencies": [
-        "async",
-        "collection",
-        "dio_web_adapter",
-        "http_parser",
-        "meta",
-        "mime",
-        "path"
-      ]
-    },
-    {
-      "name": "dio_web_adapter",
-      "version": "2.1.2",
-      "dependencies": [
-        "dio",
-        "http_parser",
         "meta",
         "web"
       ]
     },
     {
-      "name": "mime",
-      "version": "2.0.0",
+      "name": "args",
+      "version": "2.7.0",
+      "dependencies": []
+    },
+    {
+      "name": "term_glyph",
+      "version": "1.2.2",
       "dependencies": []
     }
   ],
