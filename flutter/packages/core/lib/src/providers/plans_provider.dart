@@ -56,6 +56,10 @@ final plansProvider =
   final events = ref.watch(planEventsProvider.stream);
   final plans = <int, Plan>{};
 
+  // Emit empty list immediately so callers show "no plans" rather than an
+  // infinite loading indicator while waiting for the first server event.
+  yield [];
+
   await for (final event in events) {
     switch (event.type) {
       case PlanEventType.PLAN_ADDED:

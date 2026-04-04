@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart' show CallOptions;
 import '../proto/calendar.pb.dart';
 import '../providers.dart' show calendarServiceProvider;
 
@@ -7,6 +8,9 @@ import '../providers.dart' show calendarServiceProvider;
 final unitsProvider = FutureProvider<List<Unit>>((ref) async {
   ref.keepAlive();
   final stub = ref.watch(calendarServiceProvider);
-  final response = await stub.getUnits(Empty());
+  final response = await stub.getUnits(
+    Empty(),
+    options: CallOptions(timeout: const Duration(seconds: 5)),
+  );
   return response.units;
 });
