@@ -114,6 +114,39 @@ def _plan_from_dict(d: dict) -> calendar_pb2.PlanData:
     )
 
 
+def _seed_sample_plans() -> None:
+    """Seed sample plans for the current month when the plan store is empty.
+
+    Mirrors the plans that SqlPlanDatabase::seedSampleData() inserts in Qt so
+    both Qt (gRPC mode, no local seeding) and Flutter see identical initial data.
+    """
+    global _plans, _next_id
+    from datetime import date as _date
+    today = _date.today()
+    y = today.year
+    m = today.month
+
+    samples = [
+        # (name, start_date, start_time_secs, end_date, end_time_secs, unit_id, route_ids)
+        ("Site Inspection",   f"{y}-{m:02d}-01", 28800, f"{y}-{m:02d}-01", 32400, 1, [1]),
+        ("Evening Patrol",    f"{y}-{m:02d}-01", 72000, f"{y}-{m:02d}-01", 75600, 2, [4]),
+        ("Morning Route",     f"{y}-{m:02d}-05", 32400, f"{y}-{m:02d}-05", 39600, 1, [1, 2]),
+        ("Afternoon Route",   f"{y}-{m:02d}-05", 43200, f"{y}-{m:02d}-05", 57600, 2, [3]),
+        ("Area Survey",       f"{y}-{m:02d}-15", 36000, f"{y}-{m:02d}-15", 43200, 3, [2, 3]),
+        ("Multi-day Exercise",f"{y}-{m:02d}-20", 25200, f"{y}-{m:02d}-22", 64800, 1, [1, 2, 3, 4]),
+    ]
+    for name, sd, st, ed, et, uid, rids in samples:
+        _plans[_next_id] = calendar_pb2.PlanData(
+            name=name,
+            start_date=sd, start_time_secs=st,
+            end_date=ed,   end_time_secs=et,
+            unit_id=uid,   route_ids=rids,
+        )
+        _next_id += 1
+    print(f"[test_server] Seeded {len(samples)} sample plan(s) for {y}-{m:02d}")
+    _save_store()
+
+
 def load_store(path: Path) -> None:
     """Load persisted plans from *path* into the in-memory store."""
     global _plans, _next_id
@@ -250,6 +283,19 @@ class CalendarServicer(calendar_pb2_grpc.CalendarServiceServicer):
         peer = context.peer()
         print(f"[test_server] SubscribePlans open   sub={sub_id}  peer={peer}"
               f"  filter={unit_filter or 'all'}")
+
+        # Send initial snapshot: emit PLAN_ADDED for every existing plan so new
+        # subscribers receive the full current state before live deltas begin.
+        with _state_lock:
+            snapshot = list(_plans.items())
+        for plan_id, data in snapshot:
+            if not unit_filter or data.unit_id in unit_filter:
+                yield calendar_pb2.PlanEvent(
+                    type=calendar_pb2.PLAN_ADDED,
+                    id=plan_id,
+                    data=data,
+                )
+
         try:
             while context.is_active():
                 try:
@@ -280,6 +326,8 @@ def main() -> None:
 
     _store_path = args.store
     load_store(_store_path)
+    if not _plans:
+        _seed_sample_plans()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=16))
     calendar_pb2_grpc.add_CalendarServiceServicer_to_server(CalendarServicer(), server)

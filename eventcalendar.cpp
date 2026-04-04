@@ -69,7 +69,14 @@ int main(int argc, char *argv[])
     // App/qmldir (prefer :/) before the embedded resource qmldir (prefer :/App/).
     // Prepending qrc:/ ensures the resource version wins.
     engine.addImportPath(QStringLiteral("qrc:/"));
+    // When gRPC sync is compiled in the server is the source of truth; suppress
+    // local sample data so Qt and Flutter display identical plan sets.
+    // When gRPC is absent the sample data gives a useful offline demo.
+#ifdef EC_GRPC_ENABLED
+    SqlPlanDatabase planDatabase(QStringLiteral("plandb"), /*withSampleData=*/false);
+#else
     SqlPlanDatabase planDatabase;
+#endif
 
 #ifndef Q_OS_WASM
     const QUrl serverUrl(QStringLiteral("http://localhost:50051"));
