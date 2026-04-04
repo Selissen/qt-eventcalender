@@ -1,0 +1,17 @@
+name: feature_week_view
+description: Flutter week calendar view — unit-band grid with plan chips.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  core:
+    path: ../core
+  design_system:
+    path: ../design_system
