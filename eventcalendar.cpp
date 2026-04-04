@@ -108,6 +108,7 @@ int main(int argc, char *argv[])
             } else {
                 navBridge->setFlutterContainer(flutter);
                 navBridge->setFlutterRoutes({ QStringLiteral("/plans"),
+                                              QStringLiteral("/week"),
                                               QStringLiteral("/widget-catalog") });
                 app.installNativeEventFilter(new FlutterFocusFilter(flutter));
             }

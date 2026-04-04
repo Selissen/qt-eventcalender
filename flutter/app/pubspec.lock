@@ -254,6 +254,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  feature_week_view:
+    dependency: "direct main"
+    description:
+      path: "../packages/feature_week_view"
+      relative: true
+    source: path
+    version: "0.1.0"
   file:
     dependency: transitive
     description:

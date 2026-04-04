@@ -1,4 +1,5 @@
 import 'package:feature_plans/feature_plans.dart';
+import 'package:feature_week_view/feature_week_view.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,7 +18,7 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (_, __) => const _PlaceholderScreen(),
+      builder: (_, _) => const _PlaceholderScreen(),
     ),
 
     // ── Tier 1 migrated screens ──────────────────────────────────────────────
@@ -26,13 +27,17 @@ final appRouter = GoRouter(
     // ── Tier 2 migrated screens ──────────────────────────────────────────────
     GoRoute(
       path: '/plans',
-      builder: (_, __) => const PlansScreen(),
+      builder: (_, _) => const PlansScreen(),
+    ),
+    GoRoute(
+      path: '/week',
+      builder: (_, _) => WeekScreen(onBack: () => backChannel.send('back')),
     ),
 
     // ── Dev / catalog ────────────────────────────────────────────────────────
     GoRoute(
       path: '/widget-catalog',
-      builder: (_, __) => const WidgetCatalogScreen(),
+      builder: (_, _) => const WidgetCatalogScreen(),
     ),
   ],
 );
@@ -59,6 +64,12 @@ class _PlaceholderScreen extends StatelessWidget {
               icon: const Icon(Icons.list_alt),
               label: const Text('Plans (migrated screen)'),
               onPressed: () => context.go('/plans'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.calendar_view_week),
+              label: const Text('Week View (migrated screen)'),
+              onPressed: () => context.go('/week'),
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(

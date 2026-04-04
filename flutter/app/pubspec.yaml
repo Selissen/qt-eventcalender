@@ -21,6 +21,8 @@ dependencies:
     path: ../packages/design_system
   feature_plans:
     path: ../packages/feature_plans
+  feature_week_view:
+    path: ../packages/feature_week_view
 
 dev_dependencies:
   flutter_test:
