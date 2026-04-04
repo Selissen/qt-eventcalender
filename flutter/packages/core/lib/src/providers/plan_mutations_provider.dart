@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../proto/calendar.pb.dart';
+import '../proto/calendar.pbgrpc.dart' show CalendarServiceClient;
 import '../providers.dart' show calendarServiceProvider;
 
 /// Thin wrapper around the CalendarService gRPC stub for plan write operations.

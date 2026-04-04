@@ -122,11 +122,22 @@ ApplicationWindow {
                 onClicked: window.sidebarOpen = !window.sidebarOpen
             }
 
-            // Flutter toggle — only visible when the embedding is active.
+            // Flutter week view — shadow-period button, visible in week view
+            // when the Flutter embedding is available.
             ToolButton {
-                visible: !window.flutterActive && typeof navBridge !== "undefined"
+                visible: !window.flutterActive && window.weekViewActive
+                         && typeof navBridge !== "undefined"
+                text: qsTr("Week \u2197")   // "Week ↗"
+                font.bold: true
+                onClicked: navBridge.navigateTo("/week")
+            }
+
+            // Flutter shell — opens Flutter at its last / default route.
+            ToolButton {
+                visible: !window.flutterActive && !window.weekViewActive
+                         && typeof navBridge !== "undefined"
                 text: qsTr("Flutter")
-                onClicked: navBridge.navigateTo("/widget-catalog")
+                onClicked: navBridge.navigateTo("/plans")
             }
         }
     }

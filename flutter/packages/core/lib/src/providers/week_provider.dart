@@ -56,11 +56,11 @@ final weekGridProvider = Provider.autoDispose<AsyncValue<List<WeekRow>>>((ref) {
   if (unitsAsync is AsyncLoading || plansAsync is AsyncLoading) {
     return const AsyncValue.loading();
   }
-  if (unitsAsync is AsyncError) return AsyncValue.error(
-    unitsAsync.error, unitsAsync.stackTrace!,
+  if (unitsAsync.hasError) return AsyncValue.error(
+    unitsAsync.error!, unitsAsync.stackTrace!,
   );
-  if (plansAsync is AsyncError) return AsyncValue.error(
-    plansAsync.error, plansAsync.stackTrace!,
+  if (plansAsync.hasError) return AsyncValue.error(
+    plansAsync.error!, plansAsync.stackTrace!,
   );
 
   final allUnits = unitsAsync.value!;
