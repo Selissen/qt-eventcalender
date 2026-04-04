@@ -34,6 +34,24 @@ set_target_properties(QtFlutterEmbedding PROPERTIES
     VERSION ${QtFlutterEmbedding_VERSION}
 )
 
+# QML module: FlutterComponentView, FlutterView (and FlutterMapItem for
+# app-specific use) declare QML_ELEMENT in their headers.  This call wires
+# the MOC-generated registration code into a static plugin
+# (QtFlutterEmbeddingplugin) so consumers can write:
+#
+#   import QtFlutterEmbedding
+#   FlutterComponentView { entrypoint: "..."; channel: "..." }
+#
+# NOTE: The shared eventcalendar.qml also registers these types under the
+# "App" URI via qmlRegisterType() (desktop only) so the existing QML file
+# doesn't need a platform-conditional import statement.  New desktop-only
+# QML files should use `import QtFlutterEmbedding` instead.
+qt_add_qml_module(QtFlutterEmbedding
+    URI     QtFlutterEmbedding
+    VERSION 1.0
+    # No QML_FILES — pure C++ type-registration module
+)
+
 # BUILD_INTERFACE: bare includes work during this build (source dir + engine dir).
 # INSTALL_INTERFACE: installed headers live under include/QtFlutterEmbedding/.
 #   Flutter engine headers are provided by the re-created flutter_windows target
@@ -54,7 +72,15 @@ target_link_libraries(QtFlutterEmbedding PUBLIC
 
 # ── Install rules ─────────────────────────────────────────────────────────────
 
-install(TARGETS QtFlutterEmbedding
+# All four targets — including the two qt_add_qml_module-generated internal
+# helpers — must appear in the same EXPORT set.  CMake's install(EXPORT)
+# validation requires every transitive dependency of an exported target to
+# itself be in an export set; installing without EXPORT is not sufficient.
+install(TARGETS
+        QtFlutterEmbedding
+        QtFlutterEmbeddingplugin
+        QtFlutterEmbedding_resources_1
+        QtFlutterEmbeddingplugin_init
     EXPORT  QtFlutterEmbeddingTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

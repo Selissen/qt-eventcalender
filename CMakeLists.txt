@@ -181,7 +181,7 @@ if(NOT EMSCRIPTEN AND EC_FLUTTER_EMBED_ENABLED)
     target_include_directories(eventcalendar PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/embedding"
     )
-    target_link_libraries(eventcalendar PRIVATE QtFlutterEmbedding::Core)
+    target_link_libraries(eventcalendar PRIVATE QtFlutterEmbedding::Core QtFlutterEmbeddingplugin)
     target_compile_definitions(eventcalendar PRIVATE EC_FLUTTER_EMBED_ENABLED)
 
     # Copy flutter_windows.dll and the Flutter app build artifacts next to the

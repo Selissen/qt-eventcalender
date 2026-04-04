@@ -16,6 +16,7 @@
 class FlutterView : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(NavigationBridge* bridge READ bridge WRITE setBridge NOTIFY bridgeChanged)
+    QML_ELEMENT
 public:
     explicit FlutterView(QQuickItem* parent = nullptr);
 
