@@ -12,6 +12,7 @@ class AppScaffold extends StatelessWidget {
     this.leading,
     this.floatingActionButton,
     this.bottomNavigationBar,
+    this.endDrawer,
   });
 
   final String title;
@@ -20,6 +21,7 @@ class AppScaffold extends StatelessWidget {
   final Widget? leading;
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
+  final Widget? endDrawer;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +34,7 @@ class AppScaffold extends StatelessWidget {
       body: body,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
+      endDrawer: endDrawer,
     );
   }
 }

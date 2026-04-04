@@ -1,4 +1,5 @@
-import 'package:core/core.dart' show unitsProvider, selectedWeekProvider;
+import 'package:core/core.dart'
+    show unitsProvider, selectedWeekProvider, unitFilterProvider;
 
 import 'plan_form_state.dart' show planFormProvider;
 import 'package:design_system/design_system.dart' show AppScaffold;
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'widgets/hours_footer.dart';
 import 'widgets/plan_sidebar.dart';
+import 'widgets/unit_filter_sidebar.dart';
 import 'week_view.dart';
 
 int _isoWeekNumber(DateTime date) {
@@ -36,6 +38,10 @@ class WeekScreen extends ConsumerWidget {
 
     final weekNum = _isoWeekNumber(weekStart);
 
+    // Show a badge on the filter icon when a filter is active.
+    final filterActive = ref.watch(
+        unitFilterProvider.select((f) => f.isNotEmpty));
+
     return AppScaffold(
       title: 'Week $weekNum',
       actions: [
@@ -50,6 +56,18 @@ class WeekScreen extends ConsumerWidget {
           tooltip: 'Next week',
           onPressed: () =>
               weekNotifier.state = weekStart.add(const Duration(days: 7)),
+        ),
+        // Builder gives a context that is a descendant of the Scaffold,
+        // required for Scaffold.of(ctx).openEndDrawer() to work.
+        Builder(
+          builder: (ctx) => IconButton(
+            icon: Badge(
+              isLabelVisible: filterActive,
+              child: const Icon(Icons.filter_list),
+            ),
+            tooltip: 'Filter units',
+            onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+          ),
         ),
         if (onBack != null)
           IconButton(
@@ -67,6 +85,7 @@ class WeekScreen extends ConsumerWidget {
         const PlanSidebar(),
       ]),
       bottomNavigationBar: const HoursFooter(),
+      endDrawer: const UnitFilterSidebar(),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add plan',
         onPressed: () {
