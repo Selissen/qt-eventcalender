@@ -79,14 +79,13 @@ Platform scope: **Windows only** (Win32 HWND embedding). No Linux/macOS abstract
 
 ## Phase 5 — Engine sharing (engine groups)
 
-**What:** Each `ComponentEngineFactory::createController` call currently spawns a separate Flutter engine (separate Dart VM). Flutter supports engine groups where multiple view controllers share one Dart VM, which is faster to spawn and cheaper on memory.
+**Status: N/A — not implementable on Windows with the current Flutter SDK.**
 
-**Deliverables:**
-- `FlutterEngineGroup` wrapper class (Windows: `FlutterDesktopEngineGroupCreate` / `...SpawnController`)
-- `ComponentEngineFactory` gains a `shared()` static factory that reuses one `FlutterEngineGroup` per process
-- Existing `createController` path kept as the "isolated engine" option for cases where isolation is needed
-- `FlutterContainer` and `FlutterMapItem` updated to use the shared factory by default
-- Memory/startup time improvement documented in commit message
+The Flutter Windows C API (`flutter_windows.h`) does not expose engine group functions (`FlutterDesktopEngineGroup*`). Engine groups are an Android/iOS concept that has not been surfaced in the Win32 embedding layer.
+
+Each `ComponentEngineFactory::createController` call therefore spawns a separate Flutter engine. For applications embedding only one or two components simultaneously this is acceptable. Should the Windows C API gain engine group support in a future Flutter release this phase can be revisited.
+
+**Alternative considered:** routing all components through one `FlutterContainer` engine via Dart-side named-route isolation. Deferred — requires non-trivial Dart coordination and offers no API stability guarantee.
 
 ---
 
