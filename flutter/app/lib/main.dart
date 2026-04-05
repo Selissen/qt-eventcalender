@@ -1,7 +1,9 @@
+import 'package:core/core.dart'
+    show CalendarRepository, PlansCubit, UnitsCubit, RoutesCubit;
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'router.dart';
 import 'screens/map_component.dart' show MapComponentApp;
@@ -40,18 +42,58 @@ void main() {
     return '';
   });
 
-  runApp(const ProviderScope(child: EventCalendarApp()));
+  runApp(const EventCalendarApp());
 }
 
-class EventCalendarApp extends StatelessWidget {
+class EventCalendarApp extends StatefulWidget {
   const EventCalendarApp({super.key});
 
   @override
+  State<EventCalendarApp> createState() => _EventCalendarAppState();
+}
+
+class _EventCalendarAppState extends State<EventCalendarApp> {
+  late final CalendarRepository _repository;
+  late final PlansCubit _plansCubit;
+  late final UnitsCubit _unitsCubit;
+  late final RoutesCubit _routesCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository = CalendarRepository();
+    _plansCubit = PlansCubit(_repository)..subscribe();
+    _unitsCubit = UnitsCubit(_repository)..load();
+    _routesCubit = RoutesCubit(_repository)..load();
+  }
+
+  @override
+  void dispose() {
+    _plansCubit.close();
+    _unitsCubit.close();
+    _routesCubit.close();
+    _repository.shutdown();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'EventCalendar',
-      theme: buildAppTheme(),
-      routerConfig: appRouter,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<CalendarRepository>.value(value: _repository),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<PlansCubit>.value(value: _plansCubit),
+          BlocProvider<UnitsCubit>.value(value: _unitsCubit),
+          BlocProvider<RoutesCubit>.value(value: _routesCubit),
+        ],
+        child: MaterialApp.router(
+          title: 'EventCalendar',
+          theme: buildAppTheme(),
+          routerConfig: appRouter,
+        ),
+      ),
     );
   }
 }

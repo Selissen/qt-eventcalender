@@ -1,6 +1,8 @@
 library feature_week_view;
 
-export 'src/plan_form_state.dart' show PlanFormState, PlanFormNotifier, planFormProvider;
+export 'src/cubits/plan_form_cubit.dart'
+    show PlanFormState, PlanFormClosed, PlanFormOpen, PlanFormCubit;
+export 'src/cubits/week_view_cubit.dart' show WeekViewState, WeekViewCubit;
 export 'src/week_screen.dart' show WeekScreen;
 export 'src/week_view.dart';
 export 'src/widgets/hours_footer.dart' show HoursFooter;

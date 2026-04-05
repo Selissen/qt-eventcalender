@@ -1,4 +1,4 @@
-import 'providers/plans_provider.dart' show Plan;
+import 'cubits/plans_cubit.dart' show Plan;
 import 'proto/calendar.pb.dart' show Unit;
 
 // ── Row types ─────────────────────────────────────────────────────────────────

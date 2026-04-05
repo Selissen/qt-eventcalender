@@ -1,0 +1,9 @@
+# Large Flutter prebuilt binaries — store with Git LFS
+prebuilt/**/*.dll     filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.dll.lib filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.so      filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.dat     filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.otf     filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.ttf     filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.png     filter=lfs diff=lfs merge=lfs -text
+prebuilt/**/*.frag    filter=lfs diff=lfs merge=lfs -text

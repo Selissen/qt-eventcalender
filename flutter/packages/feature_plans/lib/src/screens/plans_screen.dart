@@ -1,33 +1,29 @@
-import 'package:core/core.dart';
+import 'package:core/core.dart' show Plan, PlansCubit, PlansState, PlansLoaded;
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Live plans list screen — migrated from Qt's PlanFooter + EventSidebar.
 ///
-/// Data flows via the CalendarService SubscribePlans gRPC stream.
-/// The stream stays open while this screen is visible and closes automatically
-/// when navigated away (autoDispose on plansProvider).
-class PlansScreen extends ConsumerWidget {
+/// Data flows via [PlansCubit] which subscribes to the CalendarService
+/// SubscribePlans gRPC stream. The stream stays open app-wide.
+class PlansScreen extends StatelessWidget {
   const PlansScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final plans = ref.watch(plansProvider);
+  Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Plans',
-      body: plans.when(
-        data: (list) => list.isEmpty
-            ? const EmptyView(
-                message: 'No plans yet',
-                icon: Icons.event_note_outlined,
-              )
-            : _PlansList(plans: list),
-        loading: () => const AppLoadingSpinner(),
-        error: (e, _) => AppErrorView(
-          error: e,
-          onRetry: () => ref.invalidate(plansProvider),
-        ),
+      body: BlocBuilder<PlansCubit, PlansState>(
+        builder: (context, state) => switch (state) {
+          PlansLoaded(:final plans) => plans.isEmpty
+              ? const EmptyView(
+                  message: 'No plans yet',
+                  icon: Icons.event_note_outlined,
+                )
+              : _PlansList(plans: plans),
+          _ => const AppLoadingSpinner(),
+        },
       ),
     );
   }
