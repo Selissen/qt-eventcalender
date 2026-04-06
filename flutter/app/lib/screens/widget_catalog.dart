@@ -1,4 +1,14 @@
-import 'package:design_system/design_system.dart';
+import 'package:design_system/design_system.dart'
+    show
+        GButton,
+        GButtonVariant,
+        GTextField,
+        GTokens,
+        LoadingView,
+        ErrorView,
+        EmptyView,
+        AppSidebar,
+        AppSidebarItem;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../main.dart' show backChannel;
@@ -38,58 +48,64 @@ class _WidgetCatalogScreenState extends State<WidgetCatalogScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(GTokens.space6),
         children: [
-          _Section(title: 'AppButton', children: [
-            AppButton(label: 'Primary', onPressed: () {}),
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(
-                label: 'With icon', icon: Icons.add, onPressed: () {}),
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(
+          _Section(title: 'GButton', children: [
+            GButton(label: 'Primary', onPressed: () {}),
+            const SizedBox(height: GTokens.space2),
+            GButton(
+                label: 'With icon',
+                leading: const Icon(Icons.add),
+                onPressed: () {}),
+            const SizedBox(height: GTokens.space2),
+            GButton(
                 label: 'Loading',
-                isLoading: _buttonLoading,
-                onPressed: () => setState(() => _buttonLoading = !_buttonLoading)),
-            const SizedBox(height: AppSpacing.sm),
-            const AppButton(label: 'Disabled', onPressed: null),
+                loading: _buttonLoading,
+                onPressed: () =>
+                    setState(() => _buttonLoading = !_buttonLoading)),
+            const SizedBox(height: GTokens.space2),
+            const GButton(label: 'Disabled', onPressed: null),
+            const SizedBox(height: GTokens.space2),
+            GButton(
+                label: 'Danger',
+                variant: GButtonVariant.danger,
+                onPressed: () {}),
           ]),
-          const SizedBox(height: AppSpacing.lg),
-          _Section(title: 'AppTextField', children: [
-            AppTextField(
+          const SizedBox(height: GTokens.space6),
+          _Section(title: 'GTextField', children: [
+            GTextField(
               controller: _textController,
               label: 'Text field',
               hint: 'Type something…',
             ),
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: TextEditingController(),
+            const SizedBox(height: GTokens.space2),
+            const GTextField(
               label: 'With error',
               errorText: 'This field is required',
             ),
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: TextEditingController(),
+            const SizedBox(height: GTokens.space2),
+            const GTextField(
               label: 'Disabled',
               enabled: false,
             ),
           ]),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: GTokens.space6),
           _Section(title: 'States', children: [
             const SizedBox(height: 120, child: LoadingView(message: 'Loading…')),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: GTokens.space2),
             SizedBox(
               height: 120,
               child: ErrorView(
                   error: 'Something went wrong', onRetry: () {}),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: GTokens.space2),
             const SizedBox(
               height: 120,
               child: EmptyView(
                   message: 'No items yet', icon: Icons.inbox_outlined),
             ),
           ]),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: GTokens.space6),
           _Section(title: 'AppSidebar', children: [
             SizedBox(
               height: 300,
@@ -125,9 +141,12 @@ class _Section extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium
-            ?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: AppSpacing.sm),
+        Text(title,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: GTokens.space2),
         ...children,
       ],
     );

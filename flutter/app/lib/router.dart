@@ -1,3 +1,4 @@
+import 'package:design_system/design_system.dart' show GKitchenSink;
 import 'package:feature_plans/feature_plans.dart';
 import 'package:feature_week_view/feature_week_view.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,10 @@ final appRouter = GoRouter(
       path: '/widget-catalog',
       builder: (_, _) => const WidgetCatalogScreen(),
     ),
+    GoRoute(
+      path: '/kitchen-sink',
+      builder: (_, _) => const GKitchenSink(),
+    ),
   ],
 );
 
@@ -76,6 +81,12 @@ class _PlaceholderScreen extends StatelessWidget {
               icon: const Icon(Icons.widgets_outlined),
               label: const Text('Widget Catalog'),
               onPressed: () => context.go('/widget-catalog'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.palette_outlined),
+              label: const Text('G Design System'),
+              onPressed: () => context.go('/kitchen-sink'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(

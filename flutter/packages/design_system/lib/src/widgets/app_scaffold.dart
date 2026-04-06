@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../../design_system/tokens/g_tokens.dart';
 
 /// Standard app scaffold with consistent AppBar styling.
 /// Use instead of raw Scaffold + AppBar on all migrated screens.
@@ -50,7 +50,7 @@ class AppLoadingSpinner extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const CircularProgressIndicator(),
         if (message != null) ...[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: GTokens.space4),
           Text(message!),
         ],
       ]),
@@ -68,14 +68,14 @@ class AppErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(GTokens.space6),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.error_outline, size: 48,
               color: Theme.of(context).colorScheme.error),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: GTokens.space4),
           Text(error.toString(), textAlign: TextAlign.center),
           if (onRetry != null) ...[
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: GTokens.space4),
             TextButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ]),

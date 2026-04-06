@@ -11,3 +11,5 @@ export 'src/widgets/loading_error_empty.dart';
 
 // G Design System
 export 'design_system/design_system.dart';
+// Dev-only kitchen sink (not included in design_system.dart barrel)
+export 'design_system/examples/g_kitchen_sink.dart';

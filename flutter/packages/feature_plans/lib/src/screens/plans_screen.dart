@@ -12,8 +12,8 @@ class PlansScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Plans',
+    return Scaffold(
+      appBar: AppBar(title: const Text('Plans')),
       body: BlocBuilder<PlansCubit, PlansState>(
         builder: (context, state) => switch (state) {
           PlansLoaded(:final plans) => plans.isEmpty

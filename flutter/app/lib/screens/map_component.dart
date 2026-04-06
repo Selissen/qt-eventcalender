@@ -45,7 +45,9 @@ class MapComponentScreen extends StatefulWidget {
 class _MapComponentScreenState extends State<MapComponentScreen> {
   final _mapController = MapController();
   late final _binding = FlutterComponentBinding(
-    channel: 'com.eventcalendar/map/${widget.instanceId}',
+    channel: widget.instanceId.isEmpty
+        ? 'com.eventcalendar/map'
+        : 'com.eventcalendar/map/${widget.instanceId}',
     onMessage: _handleMessage,
   );
 

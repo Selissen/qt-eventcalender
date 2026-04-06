@@ -1,6 +1,5 @@
 import 'package:core/core.dart'
     show CalendarRepository, PlansCubit, UnitsCubit, UnitsLoaded;
-import 'package:design_system/design_system.dart' show AppScaffold;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -54,38 +53,40 @@ class _WeekScreenBody extends StatelessWidget {
         final weekCubit = context.read<WeekViewCubit>();
         final formCubit = context.read<PlanFormCubit>();
 
-        return AppScaffold(
-          title: 'Week ${state.weekNumber}',
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              tooltip: 'Previous week',
-              onPressed: weekCubit.prevWeek,
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              tooltip: 'Next week',
-              onPressed: weekCubit.nextWeek,
-            ),
-            // Builder gives a context that is a descendant of the Scaffold,
-            // required for Scaffold.of(ctx).openEndDrawer() to work.
-            Builder(
-              builder: (ctx) => IconButton(
-                icon: Badge(
-                  isLabelVisible: state.unitFilter.isNotEmpty,
-                  child: const Icon(Icons.filter_list),
-                ),
-                tooltip: 'Filter units',
-                onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-              ),
-            ),
-            if (onBack != null)
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Week ${state.weekNumber}'),
+            actions: [
               IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: 'Back to Qt',
-                onPressed: onBack,
+                icon: const Icon(Icons.chevron_left),
+                tooltip: 'Previous week',
+                onPressed: weekCubit.prevWeek,
               ),
-          ],
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                tooltip: 'Next week',
+                onPressed: weekCubit.nextWeek,
+              ),
+              // Builder gives a context that is a descendant of the Scaffold,
+              // required for Scaffold.of(ctx).openEndDrawer() to work.
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: Badge(
+                    isLabelVisible: state.unitFilter.isNotEmpty,
+                    child: const Icon(Icons.filter_list),
+                  ),
+                  tooltip: 'Filter units',
+                  onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+                ),
+              ),
+              if (onBack != null)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Back to Qt',
+                  onPressed: onBack,
+                ),
+            ],
+          ),
           body: Row(children: [
             Expanded(
               child: WeekView(onPlanTap: formCubit.openForEdit),

@@ -16,7 +16,7 @@ import 'package:core/core.dart'
         UnitsCubit,
         UnitsLoaded;
 import 'package:core/src/proto/calendar.pb.dart' show Unit;
-import 'package:design_system/design_system.dart' show buildAppTheme;
+import 'package:design_system/design_system.dart' show GTheme;
 import 'package:feature_week_view/src/cubits/week_view_cubit.dart';
 import 'package:feature_week_view/src/widgets/hours_footer.dart';
 import 'package:flutter/material.dart';
@@ -99,7 +99,7 @@ Widget _buildFooter({
         BlocProvider<WeekViewCubit>.value(value: weekCubit),
       ],
       child: MaterialApp(
-        theme: buildAppTheme(),
+        theme: GTheme.light(),
         home: const Scaffold(body: HoursFooter()),
       ),
     );

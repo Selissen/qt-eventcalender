@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../../design_system/tokens/g_tokens.dart';
 
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key, this.message});
@@ -11,7 +11,7 @@ class LoadingView extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const CircularProgressIndicator(),
         if (message != null) ...[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: GTokens.space4),
           Text(message!),
         ],
       ]),
@@ -28,11 +28,12 @@ class ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-        const SizedBox(height: AppSpacing.md),
+        Icon(Icons.error_outline, size: 48,
+            color: Theme.of(context).colorScheme.error),
+        const SizedBox(height: GTokens.space4),
         Text(error.toString()),
         if (onRetry != null) ...[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: GTokens.space4),
           TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ]),
@@ -47,14 +48,14 @@ class EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon ?? Icons.inbox_outlined, size: 48,
-            color: AppColors.onSurface.withValues(alpha: 0.38)),
-        const SizedBox(height: AppSpacing.md),
+            color: onSurface.withValues(alpha: 0.38)),
+        const SizedBox(height: GTokens.space4),
         Text(message,
-            style: TextStyle(
-                color: AppColors.onSurface.withValues(alpha: 0.6))),
+            style: TextStyle(color: onSurface.withValues(alpha: 0.6))),
       ]),
     );
   }
