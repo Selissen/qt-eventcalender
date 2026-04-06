@@ -2,7 +2,6 @@
 #ifndef Q_OS_WASM
 
 #include <QQuickItem>
-#include <QTimer>
 #include <QVariantMap>
 #include <windows.h>
 #include <flutter_windows.h>
@@ -62,6 +61,11 @@ public:
     void setInstanceId(const QString& v);
     void setArtifactsDir(const QString& v);
 
+    /// Synchronise the embedded HWND rect to the current scene position.
+    /// Call this from a parent item's geometryChange() if the parent moves
+    /// without resizing the component (position change only).
+    void syncGeometry();
+
     /// Send a JSON message to the Flutter component.
     /// Can be called before the engine is ready — messages are queued and
     /// flushed in order once Flutter signals "ready".
@@ -83,6 +87,9 @@ signals:
 protected:
     void geometryChange(const QRectF& newGeom, const QRectF& oldGeom) override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;
+    /// Called by Qt Quick after all layout passes complete, before rendering.
+    /// Used to show/position the HWND at the correct post-layout scene position.
+    void updatePolish() override;
 
 private:
     void ensureEngine();
@@ -97,7 +104,6 @@ private:
 
     FlutterDesktopViewControllerRef controller_ = nullptr;
     ComponentBridge*                bridge_     = nullptr;
-    QTimer*                         loopTimer_  = nullptr;
 
     bool dartReady_ = false;
 

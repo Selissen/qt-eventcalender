@@ -44,14 +44,6 @@ bool FlutterContainer::initialize(const QString& assetsPath,
         return false;
     }
 
-    // Drive Flutter's message loop from Qt's main thread at ~60 fps.
-    loop_timer_ = new QTimer(this);
-    connect(loop_timer_, &QTimer::timeout, this, [this]() {
-        if (engine_)
-            FlutterDesktopEngineProcessMessages(engine_);
-    });
-    loop_timer_->start(16);
-
     state_ = State::Initialized;
     return true;
 }
@@ -70,9 +62,10 @@ bool FlutterContainer::embedInto(HWND parentHwnd)
 
     // Convert the Flutter top-level window into a WS_CHILD window so it
     // renders inside the parent (the QQuickWindow's HWND).
+    // WS_CLIPSIBLINGS prevents paint artifacts when sibling windows overlap.
     LONG style = ::GetWindowLong(hwnd, GWL_STYLE);
     style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_OVERLAPPEDWINDOW))
-            | WS_CHILD;
+            | WS_CHILD | WS_CLIPSIBLINGS;
     if (!::SetWindowLong(hwnd, GWL_STYLE, style))
         qWarning("[FlutterContainer] SetWindowLong failed: %lu", ::GetLastError());
     if (!::SetParent(hwnd, parentHwnd))
@@ -127,8 +120,6 @@ FlutterDesktopMessengerRef FlutterContainer::messenger() const
 
 FlutterContainer::~FlutterContainer()
 {
-    if (loop_timer_)
-        loop_timer_->stop();
     if (controller_)
         FlutterDesktopViewControllerDestroy(controller_);
     // engine_ is owned by the controller after ViewControllerCreate;

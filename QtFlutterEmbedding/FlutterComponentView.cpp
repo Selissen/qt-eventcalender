@@ -16,7 +16,6 @@ FlutterComponentView::FlutterComponentView(QQuickItem* parent)
 
 FlutterComponentView::~FlutterComponentView()
 {
-    if (loopTimer_) loopTimer_->stop();
     // Unregister the messenger callback before destroying the controller so
     // no in-flight message can arrive after bridge_ is freed.
     if (bridge_) {
@@ -65,6 +64,8 @@ void FlutterComponentView::ensureEngine()
         ? ComponentEngineFactory::artifactsDir()
         : artifactsDir_;
 
+    // Flutter engine expects physical pixel dimensions.
+    const qreal dpr = window()->devicePixelRatio();
     controller_ = ComponentEngineFactory::createController(
         dir + QStringLiteral("/flutter_assets"),
         dir + QStringLiteral("/icudtl.dat"),
@@ -72,7 +73,7 @@ void FlutterComponentView::ensureEngine()
             ? dir + QStringLiteral("/app.so") : QString{},
         entrypoint_,
         instanceId_,
-        qRound(width()), qRound(height()));
+        qRound(width() * dpr), qRound(height() * dpr));
 
     if (!controller_) {
         const QString reason =
@@ -115,17 +116,9 @@ void FlutterComponentView::ensureEngine()
         }
     });
 
-    // Drive Flutter's message loop at ~60 fps from Qt's main thread.
-    loopTimer_ = new QTimer(this);
-    connect(loopTimer_, &QTimer::timeout, this, [this]() {
-        if (controller_)
-            FlutterDesktopEngineProcessMessages(
-                FlutterDesktopViewControllerGetEngine(controller_));
-    });
-    loopTimer_->start(16);
-
     syncRect();
-    syncVisibility(isVisible());
+    // Visibility sync is deferred to updatePolish() so that mapToScene()
+    // is called after the layout pass assigns the correct scene position.
 
     qDebug("[FlutterComponentView] Engine started for '%s' on channel '%s'.",
            qPrintable(entrypoint_), qPrintable(fullChannel));
@@ -166,23 +159,51 @@ void FlutterComponentView::itemChange(ItemChange change, const ItemChangeData& v
 {
     QQuickItem::itemChange(change, value);
     if (change == ItemSceneChange && value.window) {
-        if (isVisible()) ensureEngine();
+        if (isVisible()) {
+            ensureEngine();
+            // Defer show until updatePolish() so the layout has settled.
+            polish();
+        }
     } else if (change == ItemVisibleHasChanged) {
-        if (value.boolValue) ensureEngine();
-        syncRect();
-        syncVisibility(value.boolValue);
+        if (value.boolValue) {
+            ensureEngine();
+            // Defer show until updatePolish() — layout assigns the correct
+            // scene position (e.g. x-offset from sibling items) only after
+            // the current property-change pass, so reading mapToScene() now
+            // would give a stale position.
+            polish();
+        } else {
+            syncRect();
+            syncVisibility(false);
+        }
     }
+}
+
+void FlutterComponentView::updatePolish()
+{
+    // Called by Qt Quick after layout passes complete, before frame render.
+    // Safe to read mapToScene() for the final layout-assigned position.
+    syncRect();
+    syncVisibility(isVisible());
+}
+
+void FlutterComponentView::syncGeometry()
+{
+    syncRect();
 }
 
 void FlutterComponentView::syncRect()
 {
     if (!controller_ || !window()) return;
-    const HWND flutterHwnd = FlutterDesktopViewGetHWND(
+    const HWND    flutterHwnd = FlutterDesktopViewGetHWND(
         FlutterDesktopViewControllerGetView(controller_));
+    // mapToScene() and width()/height() are in Qt logical pixels.
+    // Win32 MoveWindow requires physical pixels.
     const QPointF scenePos = mapToScene(QPointF(0, 0));
+    const qreal   dpr      = window()->devicePixelRatio();
     ::MoveWindow(flutterHwnd,
-                 qRound(scenePos.x()), qRound(scenePos.y()),
-                 qRound(width()),       qRound(height()),
+                 qRound(scenePos.x() * dpr), qRound(scenePos.y() * dpr),
+                 qRound(width()       * dpr), qRound(height()      * dpr),
                  TRUE);
 }
 

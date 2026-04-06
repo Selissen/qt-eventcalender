@@ -4,7 +4,6 @@
 #include "FlutterContainer.h"
 
 #include <QDebug>
-#include <QPointer>
 #include <QQuickItem>
 
 // Navigation channel names — part of the Qt↔Flutter protocol.
@@ -94,27 +93,17 @@ void NavigationBridge::listenForBackNavigation(FlutterDesktopMessengerRef messen
 {
     if (!messenger) return;
 
-    // Capture a QPointer so the lambda is safe if this object is deleted
-    // before Flutter sends the back-navigation message.
-    QPointer<NavigationBridge> self = this;
+    // Safety: user_data is `this`. The messenger and this bridge share the
+    // same QObject hierarchy and are destroyed together, so the raw pointer
+    // is valid for the lifetime of the callback registration.
     FlutterDesktopMessengerSetCallback(
         messenger,
         kChannelNavigationBack,
         [](FlutterDesktopMessengerRef m,
            const FlutterDesktopMessage* msg,
            void* user_data) {
-            if (auto* bridge = static_cast<NavigationBridge*>(user_data)) {
-                // Re-check via QPointer — the raw pointer in user_data could
-                // be stale if the bridge was deleted between registration and
-                // callback delivery.  We can't store QPointer as user_data
-                // (it's not trivially copyable), so emit only if the stored
-                // weak ref is still valid.
-                //
-                // Practical safety: the filter is installed on a messenger
-                // owned by FlutterContainer; both are destroyed together with
-                // NavigationBridge in the same QObject hierarchy.
+            if (auto* bridge = static_cast<NavigationBridge*>(user_data))
                 bridge->navigateToQt();
-            }
             if (msg && msg->response_handle)
                 FlutterDesktopMessengerSendResponse(m, msg->response_handle,
                                                     nullptr, 0);

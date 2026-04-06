@@ -2,7 +2,6 @@
 #ifndef Q_OS_WASM
 
 #include <QObject>
-#include <QTimer>
 #include <windows.h>
 #include <flutter_windows.h>
 #include <flutter_messenger.h>
@@ -64,7 +63,6 @@ signals:
 private:
     FlutterDesktopEngineRef          engine_           = nullptr;
     FlutterDesktopViewControllerRef  controller_       = nullptr;
-    QTimer*                          loop_timer_       = nullptr;
     bool                             embedded_visible_ = false;
     State                            state_            = State::Uninitialized;
 };
