@@ -50,11 +50,11 @@ class EmptyView extends StatelessWidget {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon ?? Icons.inbox_outlined, size: 48,
-            color: AppColors.onSurface.withOpacity(0.38)),
+            color: AppColors.onSurface.withValues(alpha: 0.38)),
         const SizedBox(height: AppSpacing.md),
         Text(message,
             style: TextStyle(
-                color: AppColors.onSurface.withOpacity(0.6))),
+                color: AppColors.onSurface.withValues(alpha: 0.6))),
       ]),
     );
   }

@@ -47,7 +47,7 @@ class AppSidebar extends StatelessWidget {
               ),
               selected: selected,
               selectedTileColor:
-                  colorScheme.primaryContainer.withOpacity(0.15),
+                  colorScheme.primaryContainer.withValues(alpha: 0.15),
               onTap: () => onItemSelected(i),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,

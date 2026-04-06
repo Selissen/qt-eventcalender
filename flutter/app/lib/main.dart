@@ -29,7 +29,7 @@ const backChannel = BasicMessageChannel<String>(
 /// multiple map components can coexist with independent channels.
 @pragma('vm:entry-point')
 void mapComponentMain(List<String> args) {
-  final instanceId = _parseArg(args, '--instanceId=') ?? 'default';
+  final instanceId = _parseArg(args, '--instanceId=') ?? '';
   WidgetsFlutterBinding.ensureInitialized();
   runApp(MapComponentApp(instanceId: instanceId));
 }
@@ -102,7 +102,8 @@ class _EventCalendarAppState extends State<EventCalendarApp> {
         ],
         child: MaterialApp.router(
           title: 'EventCalendar',
-          theme: buildAppTheme(),
+          theme:     GTheme.light(),
+          darkTheme: GTheme.dark(),
           routerConfig: appRouter,
         ),
       ),
