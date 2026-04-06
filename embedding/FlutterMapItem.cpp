@@ -25,16 +25,19 @@ void FlutterMapItem::ensureComponent()
 {
     if (component_) return;
 
-    component_ = new FlutterComponentView(this);
+    // Create with nullptr parent so ItemSceneChange doesn't fire before all
+    // properties are set (ensureEngine() guards on entrypoint_.isEmpty()).
+    component_ = new FlutterComponentView(nullptr);
     component_->setEntrypoint(QStringLiteral("mapComponentMain"));
     component_->setChannel(QLatin1String(FlutterChannels::kMap));
     component_->setInstanceId(instanceId_);
-
-    // Mirror our geometry into the inner component.
     component_->setX(0);
     component_->setY(0);
     component_->setWidth(width());
     component_->setHeight(height());
+    // setParentItem triggers ItemSceneChange with all properties already set,
+    // so ensureEngine() will proceed correctly.
+    component_->setParentItem(this);
     component_->setVisible(isVisible());
 
     // Forward engine errors up to QML.
@@ -101,6 +104,10 @@ void FlutterMapItem::geometryChange(const QRectF& newGeom, const QRectF& oldGeom
     if (component_) {
         component_->setWidth(newGeom.width());
         component_->setHeight(newGeom.height());
+        // Sync HWND position when this item moves (size change triggers
+        // FlutterComponentView::geometryChange already, but a pure position
+        // change does not — syncGeometry() covers that case).
+        component_->syncGeometry();
     }
 }
 

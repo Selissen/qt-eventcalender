@@ -54,9 +54,14 @@ __attribute__((constructor(200))) static void installFilteredMessageHandler()
 int main(int argc, char *argv[])
 {
 #ifdef EC_FLUTTER_EMBED_ENABLED
-    // Prevent double-scaling: Qt and Flutter each apply DPI scaling independently.
+    // Declare per-monitor V2 DPI awareness before any window is created so that
+    // Windows reports physical pixel coordinates to the process without any DWM
+    // virtualisation.  Qt 6's own DPI scaling then runs on top: it reads the
+    // monitor DPI, sets an appropriate devicePixelRatio, and renders at the
+    // correct logical-to-physical ratio.  All Win32 calls (MoveWindow etc.) that
+    // position the embedded Flutter HWNDs must therefore multiply Qt logical
+    // coordinates by window()->devicePixelRatio() to get physical pixels.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    QApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
     QApplication app(argc, argv);
 #else
     QGuiApplication app(argc, argv);

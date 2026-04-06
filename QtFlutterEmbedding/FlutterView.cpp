@@ -3,6 +3,8 @@
 #include "FlutterView.h"
 #include "NavigationBridge.h"
 
+#include <QQuickWindow>
+
 FlutterView::FlutterView(QQuickItem* parent)
     : QQuickItem(parent) {}
 
@@ -34,12 +36,13 @@ void FlutterView::syncRect()
 {
     if (!bridge_ || !window())
         return;
-    // mapToScene gives item top-left in QQuickWindow logical coordinates.
-    // With AA_DisableHighDpiScaling, logical == physical == HWND coordinates.
+    // mapToScene() returns logical pixel coordinates; Win32 MoveWindow needs
+    // physical pixels.  Multiply by devicePixelRatio() to convert.
     const QPointF scenePos = mapToScene(QPointF(0, 0));
+    const qreal   dpr      = window()->devicePixelRatio();
     bridge_->updateFlutterRect(
-        qRound(scenePos.x()), qRound(scenePos.y()),
-        qRound(width()),       qRound(height()));
+        qRound(scenePos.x() * dpr), qRound(scenePos.y() * dpr),
+        qRound(width()       * dpr), qRound(height()      * dpr));
 }
 
 #endif // Q_OS_WASM
