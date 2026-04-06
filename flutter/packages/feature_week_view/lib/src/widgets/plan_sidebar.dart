@@ -44,7 +44,7 @@ class PlanSidebar extends StatelessWidget {
                             icon: const Icon(Icons.arrow_back, size: 20),
                             tooltip: 'Close',
                             onPressed: () =>
-                                context.read<PlanFormCubit>().close(),
+                                context.read<PlanFormCubit>().dismiss(),
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Text(

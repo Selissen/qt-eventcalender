@@ -24,10 +24,22 @@ const backChannel = BasicMessageChannel<String>(
 
 /// Entry point used by ComponentEngineFactory for the embedded map component.
 /// Must live in main.dart (the root library) for the AOT linker to find it by name.
+///
+/// The C++ side passes "--instanceId=<id>" via dart_entrypoint_argv so that
+/// multiple map components can coexist with independent channels.
 @pragma('vm:entry-point')
-void mapComponentMain() {
+void mapComponentMain(List<String> args) {
+  final instanceId = _parseArg(args, '--instanceId=') ?? 'default';
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MapComponentApp());
+  runApp(MapComponentApp(instanceId: instanceId));
+}
+
+/// Extracts the value after [prefix] from [args], or null if not present.
+String? _parseArg(List<String> args, String prefix) {
+  for (final a in args) {
+    if (a.startsWith(prefix)) return a.substring(prefix.length);
+  }
+  return null;
 }
 
 void main() {

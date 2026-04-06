@@ -128,10 +128,11 @@ if(NOT EMSCRIPTEN)
     option(EC_FLUTTER_EMBED_ENABLED
         "Embed Flutter inside the Qt shell via Win32 HWND hosting" ON)
 
-    # Default to the Flutter SDK engine artifacts; override with -DFLUTTER_ENGINE_DIR=...
+    # Default to the committed prebuilt artifacts so no Flutter SDK is required.
+    # Override with -DFLUTTER_ENGINE_DIR=... to use a local Flutter SDK instead.
     if(NOT DEFINED FLUTTER_ENGINE_DIR)
         set(FLUTTER_ENGINE_DIR
-            "X:/Flutter/bin/cache/artifacts/engine/windows-x64"
+            "${CMAKE_SOURCE_DIR}/prebuilt/flutter_engine"
             CACHE PATH "Path to Flutter Windows engine artifacts (contains flutter_windows.dll)")
     endif()
 

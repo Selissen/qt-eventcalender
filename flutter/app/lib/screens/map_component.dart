@@ -5,7 +5,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class MapComponentApp extends StatelessWidget {
-  const MapComponentApp({super.key});
+  const MapComponentApp({super.key, required this.instanceId});
+
+  final String instanceId;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +17,7 @@ class MapComponentApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MapComponentScreen(),
+      home: MapComponentScreen(instanceId: instanceId),
     );
   }
 }
@@ -29,7 +31,12 @@ class _RoutePoint {
 }
 
 class MapComponentScreen extends StatefulWidget {
-  const MapComponentScreen({super.key});
+  const MapComponentScreen({super.key, required this.instanceId});
+
+  /// Unique identifier for this map component instance.
+  /// The bridge channel will be "com.eventcalendar/map/<instanceId>",
+  /// matching what FlutterComponentView computes on the C++ side.
+  final String instanceId;
 
   @override
   State<MapComponentScreen> createState() => _MapComponentScreenState();
@@ -38,7 +45,7 @@ class MapComponentScreen extends StatefulWidget {
 class _MapComponentScreenState extends State<MapComponentScreen> {
   final _mapController = MapController();
   late final _binding = FlutterComponentBinding(
-    channel: 'com.eventcalendar/map',
+    channel: 'com.eventcalendar/map/${widget.instanceId}',
     onMessage: _handleMessage,
   );
 

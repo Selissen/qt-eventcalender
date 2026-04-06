@@ -35,8 +35,17 @@ public:
 
     /// Convenience overload: derives assetsPath / icuDataPath / aotPath from
     /// artifactsDir() and forwards to the full overload.
+    ///
+    /// Pass a non-empty \a instanceId to scope the component's message channel
+    /// and Dart entry-point arguments to a unique instance (e.g. "planning" or
+    /// "overview").  The engine receives \c --instanceId=<id> via
+    /// \c dart_entrypoint_argv so the Dart side can construct a matching channel
+    /// name.  Two components with different instanceIds on the same entrypoint
+    /// are fully independent.  When empty (default), no argv is added and the
+    /// channel is used as-is — existing callers are unaffected.
     static FlutterDesktopViewControllerRef createController(
         const QString& entrypoint,
+        const QString& instanceId = {},
         int initialWidth  = 400,
         int initialHeight = 300);
 
@@ -47,6 +56,7 @@ public:
         const QString& icuDataPath,
         const QString& aotLibraryPath,
         const QString& entrypoint,
+        const QString& instanceId = {},
         int initialWidth  = 400,
         int initialHeight = 300);
 };

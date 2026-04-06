@@ -10,6 +10,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 #include <cstring>
 
 // ── Stable dummy objects ──────────────────────────────────────────────────
@@ -36,6 +37,7 @@ struct StubState {
 
     QList<FlutterStub::SendRecord>     sends;
     QList<FlutterStub::CallbackRecord> callbacks;
+    FlutterStub::EngineCreateRecord    lastEngineCreate;
 
     // channel → {callback, userData}  (latest registration wins)
     struct Registration {
@@ -82,6 +84,13 @@ QList<CallbackRecord> takeCallbacks()
     return result;
 }
 
+EngineCreateRecord takeLastEngineCreate()
+{
+    EngineCreateRecord result;
+    std::swap(result, g_state.lastEngineCreate);
+    return result;
+}
+
 void injectMessage(const std::string& channel, const QByteArray& payload)
 {
     auto it = g_state.registrations.find(channel);
@@ -112,12 +121,23 @@ extern "C" {
 // ---- Engine ----------------------------------------------------------------
 
 FlutterDesktopEngineRef FlutterDesktopEngineCreate(
-    const FlutterDesktopEngineProperties* /*props*/)
+    const FlutterDesktopEngineProperties* props)
 {
     if (g_state.failNextEngineCreate) {
         g_state.failNextEngineCreate = false;
         return nullptr;
     }
+    // Capture creation properties for test assertions.
+    FlutterStub::EngineCreateRecord rec;
+    if (props) {
+        rec.entrypoint = props->dart_entrypoint ? props->dart_entrypoint : "";
+        rec.argv.clear();
+        for (int i = 0; i < props->dart_entrypoint_argc; ++i) {
+            if (props->dart_entrypoint_argv && props->dart_entrypoint_argv[i])
+                rec.argv.push_back(props->dart_entrypoint_argv[i]);
+        }
+    }
+    g_state.lastEngineCreate = std::move(rec);
     return &g_engine;
 }
 

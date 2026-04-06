@@ -7,6 +7,8 @@
 
 #include <QtTest>
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 
 #include "flutter_stub.h"
 
@@ -86,6 +88,79 @@ private slots:
             QStringLiteral("") /*entrypoint*/);
 
         QVERIFY(ctrl == nullptr);
+    }
+
+    // ── 7. instanceId is forwarded as --instanceId= argv ─────────────────
+    // When createController is called with a non-empty instanceId the engine
+    // must be created with dart_entrypoint_argv containing "--instanceId=<id>".
+    void instanceIdPassedAsArgv()
+    {
+        // createController validates that flutter_assets/ and icudtl.dat exist,
+        // so use the convenience overload which skips the path checks when the
+        // artifacts dir doesn't exist.  We only want to observe what was passed
+        // to FlutterDesktopEngineCreate.
+        //
+        // Set a real-looking but non-existent dir so the factory returns nullptr
+        // after the engine create (path validation happens before create).
+        // Actually — the full overload checks paths first. Use a non-existent
+        // path to exercise the early-return path, which means EngineCreate is
+        // never called. Instead, set up a real-looking dir via the stub.
+        //
+        // Simplest approach: the convenience overload already calls the full
+        // overload after building paths from artifactsDir(). Since the paths
+        // won't exist the factory returns nullptr before EngineCreate. So we
+        // test the full overload directly with existing paths.
+        //
+        // We can't easily create real paths in a unit test. Instead we rely on
+        // the stub: FlutterDesktopEngineCreate always succeeds unless explicitly
+        // failed, regardless of the path strings passed. The path existence check
+        // in createController happens BEFORE EngineCreate. So we need valid
+        // paths for the check to pass.
+        //
+        // Create temporary flutter_assets dir and icudtl.dat file in the test's
+        // temp directory.
+        const QString tmp = QDir::tempPath() + QStringLiteral("/qtfe_test_factory");
+        QDir().mkpath(tmp + QStringLiteral("/flutter_assets"));
+        { QFile icu(tmp + QStringLiteral("/icudtl.dat")); static_cast<void>(icu.open(QIODevice::WriteOnly)); }
+
+        auto* ctrl = ComponentEngineFactory::createController(
+            tmp + QStringLiteral("/flutter_assets"),
+            tmp + QStringLiteral("/icudtl.dat"),
+            QString{} /*aot*/,
+            QStringLiteral("mapComponentMain"),
+            QStringLiteral("planning") /*instanceId*/);
+
+        QVERIFY(ctrl != nullptr);
+
+        const auto rec = FlutterStub::takeLastEngineCreate();
+        QCOMPARE(rec.entrypoint, std::string("mapComponentMain"));
+        QCOMPARE(static_cast<int>(rec.argv.size()), 1);
+        QCOMPARE(rec.argv[0], std::string("--instanceId=planning"));
+
+        // Cleanup
+        QDir(tmp).removeRecursively();
+    }
+
+    // ── 8. Empty instanceId produces no argv ─────────────────────────────
+    void emptyInstanceIdProducesNoArgv()
+    {
+        const QString tmp = QDir::tempPath() + QStringLiteral("/qtfe_test_factory2");
+        QDir().mkpath(tmp + QStringLiteral("/flutter_assets"));
+        { QFile icu(tmp + QStringLiteral("/icudtl.dat")); static_cast<void>(icu.open(QIODevice::WriteOnly)); }
+
+        auto* ctrl = ComponentEngineFactory::createController(
+            tmp + QStringLiteral("/flutter_assets"),
+            tmp + QStringLiteral("/icudtl.dat"),
+            QString{},
+            QStringLiteral("mapComponentMain"),
+            QString{} /*instanceId — empty*/);
+
+        QVERIFY(ctrl != nullptr);
+
+        const auto rec = FlutterStub::takeLastEngineCreate();
+        QVERIFY(rec.argv.empty());
+
+        QDir(tmp).removeRecursively();
     }
 };
 

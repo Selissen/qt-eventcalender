@@ -28,6 +28,12 @@ public:
 
     State state() const { return state_; }
 
+    /// Raw engine reference.  Valid after a successful initialize(); nullptr
+    /// before that.  Intended for diagnostics, testing, and future shared-engine
+    /// component creation.  Ownership remains with this FlutterContainer —
+    /// callers must not call FlutterDesktopEngineDestroy on this reference.
+    FlutterDesktopEngineRef engineRef() const { return engine_; }
+
     /// Returns false (no-op) if already initialized.
     bool initialize(const QString& assetsPath,
                     const QString& icuDataPath,

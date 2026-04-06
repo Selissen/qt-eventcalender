@@ -35,6 +35,7 @@ class FlutterComponentView : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(QString entrypoint   READ entrypoint   WRITE setEntrypoint   NOTIFY entrypointChanged)
     Q_PROPERTY(QString channel      READ channel      WRITE setChannel      NOTIFY channelChanged)
+    Q_PROPERTY(QString instanceId   READ instanceId   WRITE setInstanceId   NOTIFY instanceIdChanged)
     Q_PROPERTY(QString artifactsDir READ artifactsDir WRITE setArtifactsDir NOTIFY artifactsDirChanged)
     Q_PROPERTY(bool    ready        READ ready                               NOTIFY readyChanged)
     QML_ELEMENT
@@ -44,6 +45,13 @@ public:
 
     QString entrypoint()   const { return entrypoint_; }
     QString channel()      const { return channel_; }
+    /// Unique identifier for this component instance.
+    /// When non-empty the actual bridge channel becomes channel + "/" + instanceId
+    /// and "--instanceId=<id>" is passed to the Dart entry point via argv so the
+    /// Flutter side can construct the same channel name.
+    /// Leave empty (default) for single-instance components — no argv is added
+    /// and the channel is used verbatim.
+    QString instanceId()   const { return instanceId_; }
     /// Per-component artifacts directory override.
     /// Empty (default) means use ComponentEngineFactory::artifactsDir().
     QString artifactsDir() const { return artifactsDir_; }
@@ -51,6 +59,7 @@ public:
 
     void setEntrypoint(const QString& v);
     void setChannel(const QString& v);
+    void setInstanceId(const QString& v);
     void setArtifactsDir(const QString& v);
 
     /// Send a JSON message to the Flutter component.
@@ -61,6 +70,7 @@ public:
 signals:
     void entrypointChanged();
     void channelChanged();
+    void instanceIdChanged();
     void artifactsDirChanged();
     /// Emitted once after Flutter's first frame registers its message handler.
     void readyChanged();
@@ -82,6 +92,7 @@ private:
 
     QString entrypoint_;
     QString channel_;
+    QString instanceId_;
     QString artifactsDir_;
 
     FlutterDesktopViewControllerRef controller_ = nullptr;

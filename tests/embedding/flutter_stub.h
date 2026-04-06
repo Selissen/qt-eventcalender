@@ -27,6 +27,12 @@ struct CallbackRecord {
     void*                          userData;
 };
 
+// ── Recorded engine creation properties ──────────────────────────────────
+struct EngineCreateRecord {
+    std::string              entrypoint;  // dart_entrypoint (empty = "main")
+    std::vector<std::string> argv;        // dart_entrypoint_argv values
+};
+
 // ── Control API ──────────────────────────────────────────────────────────
 
 /// Reset all stub state.  Call in QTest::init() / QTEST_MAIN setUp.
@@ -45,6 +51,10 @@ QList<SendRecord> takeSends();
 
 /// Return and clear all MessengerSetCallback calls recorded since last call/reset.
 QList<CallbackRecord> takeCallbacks();
+
+/// Return and clear the engine-creation record captured by the last
+/// FlutterDesktopEngineCreate() call (entrypoint + argv).
+EngineCreateRecord takeLastEngineCreate();
 
 // ── Injection API ─────────────────────────────────────────────────────────
 

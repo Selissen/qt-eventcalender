@@ -23,6 +23,7 @@ QString ComponentEngineFactory::artifactsDir()
 
 FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString& entrypoint,
+    const QString& instanceId,
     int initialWidth,
     int initialHeight)
 {
@@ -32,7 +33,7 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString aot    = dir + QStringLiteral("/app.so");
     return createController(assets, icu,
                             QFile::exists(aot) ? aot : QString{},
-                            entrypoint, initialWidth, initialHeight);
+                            entrypoint, instanceId, initialWidth, initialHeight);
 }
 
 FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
@@ -40,6 +41,7 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
     const QString& icuDataPath,
     const QString& aotLibraryPath,
     const QString& entrypoint,
+    const QString& instanceId,
     int initialWidth,
     int initialHeight)
 {
@@ -62,17 +64,29 @@ FlutterDesktopViewControllerRef ComponentEngineFactory::createController(
         return nullptr;
     }
 
-    // Lifetime: wstring temporaries must outlive FlutterDesktopEngineCreate.
+    // Lifetime: wstring/QByteArray temporaries must outlive FlutterDesktopEngineCreate
+    // (the API deep-copies all strings).
     const std::wstring assets = assetsPath.toStdWString();
     const std::wstring icu    = icuDataPath.toStdWString();
     const std::wstring aot    = aotLibraryPath.toStdWString();
     const QByteArray   ep     = entrypoint.toUtf8();
 
+    // Build --instanceId= argv when an instanceId is provided.  The argv array
+    // and the string it points into must stay alive until after EngineCreate.
+    QByteArray               idArg;
+    std::vector<const char*> argv;
+    if (!instanceId.isEmpty()) {
+        idArg = (QStringLiteral("--instanceId=") + instanceId).toUtf8();
+        argv.push_back(idArg.constData());
+    }
+
     FlutterDesktopEngineProperties props = {};
-    props.assets_path      = assets.c_str();
-    props.icu_data_path    = icu.c_str();
-    props.aot_library_path = aot.empty() ? nullptr : aot.c_str();
-    props.dart_entrypoint  = ep.constData();
+    props.assets_path           = assets.c_str();
+    props.icu_data_path         = icu.c_str();
+    props.aot_library_path      = aot.empty() ? nullptr : aot.c_str();
+    props.dart_entrypoint       = ep.constData();
+    props.dart_entrypoint_argc  = static_cast<int>(argv.size());
+    props.dart_entrypoint_argv  = argv.empty() ? nullptr : argv.data();
 
     FlutterDesktopEngineRef engine = FlutterDesktopEngineCreate(&props);
     if (!engine) {

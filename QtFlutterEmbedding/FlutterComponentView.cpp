@@ -41,6 +41,13 @@ void FlutterComponentView::setChannel(const QString& v)
     emit channelChanged();
 }
 
+void FlutterComponentView::setInstanceId(const QString& v)
+{
+    if (instanceId_ == v) return;
+    instanceId_ = v;
+    emit instanceIdChanged();
+}
+
 void FlutterComponentView::setArtifactsDir(const QString& v)
 {
     if (artifactsDir_ == v) return;
@@ -64,6 +71,7 @@ void FlutterComponentView::ensureEngine()
         QFile::exists(dir + QStringLiteral("/app.so"))
             ? dir + QStringLiteral("/app.so") : QString{},
         entrypoint_,
+        instanceId_,
         qRound(width()), qRound(height()));
 
     if (!controller_) {
@@ -86,9 +94,14 @@ void FlutterComponentView::ensureEngine()
     ::SetParent(flutterHwnd, parentHwnd);
     ::ShowWindow(flutterHwnd, SW_HIDE);
 
+    // Full channel: "base/instanceId" when instanceId is set, else "base".
+    const QString fullChannel = instanceId_.isEmpty()
+        ? channel_
+        : channel_ + QStringLiteral("/") + instanceId_;
+
     bridge_ = new ComponentBridge(
         FlutterDesktopViewControllerGetEngine(controller_),
-        channel_,
+        fullChannel,
         this);
 
     connect(bridge_, &ComponentBridge::messageReceived,
@@ -115,7 +128,7 @@ void FlutterComponentView::ensureEngine()
     syncVisibility(isVisible());
 
     qDebug("[FlutterComponentView] Engine started for '%s' on channel '%s'.",
-           qPrintable(entrypoint_), qPrintable(channel_));
+           qPrintable(entrypoint_), qPrintable(fullChannel));
 }
 
 static constexpr int kMaxPendingMessages = 256;

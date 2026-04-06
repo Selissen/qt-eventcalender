@@ -95,7 +95,7 @@ class PlanFormCubit extends Cubit<PlanFormState> {
     ));
   }
 
-  void close() => emit(const PlanFormClosed());
+  void dismiss() => emit(const PlanFormClosed());
 
   // ── Field updates ────────────────────────────────────────────────────────────
 
