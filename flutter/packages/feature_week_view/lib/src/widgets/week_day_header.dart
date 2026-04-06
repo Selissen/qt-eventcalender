@@ -1,4 +1,3 @@
-import 'package:design_system/design_system.dart' show AppColors;
 import 'package:flutter/material.dart';
 
 const double kHeaderHeight = 52.0;
@@ -41,7 +40,7 @@ class WeekDayHeader extends StatelessWidget {
               '$weekNum',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.onSurface.withValues(alpha: 0.45),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
               ),
             ),
           ),
@@ -78,7 +77,7 @@ class WeekDayHeader extends StatelessWidget {
                         _kDayNames[day.weekday - 1],
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -129,7 +128,7 @@ class _DayNumber extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              color: isToday ? onPrimary : AppColors.onSurface,
+              color: isToday ? onPrimary : Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),

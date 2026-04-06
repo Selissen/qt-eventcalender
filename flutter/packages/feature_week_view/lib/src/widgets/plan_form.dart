@@ -7,7 +7,7 @@ import 'package:core/core.dart'
         RoutesState,
         RoutesLoaded;
 import 'package:design_system/design_system.dart'
-    show AppColors, AppSpacing, AppLoadingSpinner;
+    show AppLoadingSpinner, GTokens;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -28,7 +28,7 @@ class PlanForm extends StatelessWidget {
         final cubit = context.read<PlanFormCubit>();
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(GTokens.space4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -36,7 +36,7 @@ class PlanForm extends StatelessWidget {
               const Text('Unit',
                   style:
                       TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: GTokens.space1),
               BlocBuilder<UnitsCubit, UnitsState>(
                 builder: (context, unitsState) => switch (unitsState) {
                   UnitsLoaded(:final units) => DropdownButtonFormField<int>(
@@ -63,48 +63,48 @@ class PlanForm extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: GTokens.space4),
 
               // ── Start ─────────────────────────────────────────────────
               const Text('Start',
                   style:
                       TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: GTokens.space1),
               _DateTimeTile(
                   dateTime: formState.startDateTime,
                   onChanged: cubit.updateStart),
 
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: GTokens.space4),
 
               // ── End ───────────────────────────────────────────────────
               const Text('End',
                   style:
                       TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: GTokens.space1),
               _DateTimeTile(
                   dateTime: formState.endDateTime,
                   onChanged: cubit.updateEnd),
               if (formState.endError != null) ...[
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: GTokens.space1),
                 Text(formState.endError!,
-                    style: const TextStyle(
-                        color: AppColors.error, fontSize: 12)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error, fontSize: 12)),
               ],
 
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: GTokens.space4),
 
               // ── Routes ────────────────────────────────────────────────
               const Text('Routes (optional)',
                   style:
                       TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: GTokens.space1),
               BlocBuilder<RoutesCubit, RoutesState>(
                 builder: (context, routesState) => switch (routesState) {
                   RoutesLoaded(:final routes) => routes.isEmpty
                       ? Text(
                           'No routes configured',
                           style: TextStyle(
-                              color: AppColors.onSurface
+                              color: Theme.of(context).colorScheme.onSurface
                                   .withValues(alpha: 0.45),
                               fontSize: 12),
                         )
@@ -134,14 +134,14 @@ class PlanForm extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: GTokens.space6),
 
               // ── Save error ────────────────────────────────────────────
               if (formState.saveError != null) ...[
                 Text(formState.saveError!,
-                    style: const TextStyle(
-                        color: AppColors.error, fontSize: 12)),
-                const SizedBox(height: AppSpacing.sm),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error, fontSize: 12)),
+                const SizedBox(height: GTokens.space2),
               ],
 
               // ── Actions ───────────────────────────────────────────────
@@ -152,7 +152,7 @@ class PlanForm extends StatelessWidget {
                     child: const Text('Cancel'),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(width: GTokens.space2),
                 Expanded(
                   child: FilledButton(
                     onPressed: formState.isSaving ? null : cubit.save,
@@ -219,7 +219,7 @@ class _DateTimeTile extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            horizontal: GTokens.space4, vertical: GTokens.space2),
       ),
       icon: const Icon(Icons.calendar_today_outlined, size: 16),
       label: Text(_label()),

@@ -1,5 +1,4 @@
 import 'package:core/core.dart' show Plan, WeekRow, HeaderRow, PlanRow;
-import 'package:design_system/design_system.dart' show AppColors;
 import 'package:flutter/material.dart';
 
 import 'plan_cell.dart';
@@ -73,7 +72,7 @@ class _UnitHeaderBand extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface.withValues(alpha: 0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       overflow: TextOverflow.ellipsis,
                     ),
                     maxLines: 1,

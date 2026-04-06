@@ -1,4 +1,4 @@
-import 'package:design_system/design_system.dart' show AppSpacing;
+import 'package:design_system/design_system.dart' show GTokens;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -33,8 +33,8 @@ class PlanSidebar extends StatelessWidget {
                       // ── Header ──────────────────────────────────────────
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.xs),
+                            horizontal: GTokens.space2,
+                            vertical: GTokens.space1),
                         decoration: const BoxDecoration(
                           border: Border(
                               bottom: BorderSide(color: Color(0xFFCCCCCC))),
@@ -46,7 +46,7 @@ class PlanSidebar extends StatelessWidget {
                             onPressed: () =>
                                 context.read<PlanFormCubit>().dismiss(),
                           ),
-                          const SizedBox(width: AppSpacing.xs),
+                          const SizedBox(width: GTokens.space1),
                           Text(
                             state.planId == null ? 'Add Plan' : 'Edit Plan',
                             style: const TextStyle(

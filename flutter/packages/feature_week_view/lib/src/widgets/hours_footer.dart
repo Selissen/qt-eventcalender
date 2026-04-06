@@ -7,7 +7,7 @@ import 'package:core/core.dart'
         UnitsCubit,
         UnitsState,
         UnitsLoaded;
-import 'package:design_system/design_system.dart' show AppColors, AppSpacing;
+import 'package:design_system/design_system.dart' show GTokens;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -70,7 +70,7 @@ class HoursFooter extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.xs),
+                        vertical: GTokens.space1),
                     child: Row(children: [
                       ...visibleUnits.map((unit) => Expanded(
                             child: _FooterCell(
@@ -133,7 +133,7 @@ class _FooterCell extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface.withValues(alpha: 0.6),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 2),

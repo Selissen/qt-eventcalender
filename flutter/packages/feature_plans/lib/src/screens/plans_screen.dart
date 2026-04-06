@@ -36,9 +36,9 @@ class _PlansList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(GTokens.space4),
       itemCount: plans.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      separatorBuilder: (_, __) => const SizedBox(height: GTokens.space2),
       itemBuilder: (context, i) => _PlanCard(plan: plans[i]),
     );
   }
@@ -60,7 +60,7 @@ class _PlanCard extends StatelessWidget {
     return Card(
       elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(GTokens.space4),
         child: Row(children: [
           Container(
             width: 4,
@@ -70,7 +70,7 @@ class _PlanCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: GTokens.space4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

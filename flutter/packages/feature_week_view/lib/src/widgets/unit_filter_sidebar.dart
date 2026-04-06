@@ -1,7 +1,7 @@
 import 'package:core/core.dart'
     show UnitsCubit, UnitsState, UnitsInitial, UnitsLoading, UnitsLoaded, UnitsError;
 import 'package:design_system/design_system.dart'
-    show AppColors, AppSpacing, AppLoadingSpinner, AppErrorView;
+    show AppLoadingSpinner, AppErrorView, GTokens;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,7 +25,7 @@ class UnitFilterSidebar extends StatelessWidget {
             BlocBuilder<WeekViewCubit, WeekViewState>(
               builder: (context, weekState) => Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.xs),
+                    GTokens.space4, GTokens.space4, GTokens.space2, GTokens.space1),
                 child: Row(children: [
                   const Expanded(
                     child: Text(
@@ -63,7 +63,7 @@ class UnitFilterSidebar extends StatelessWidget {
                             child: Text(
                               'No units configured',
                               style: TextStyle(
-                                color: AppColors.onSurface
+                                color: Theme.of(context).colorScheme.onSurface
                                     .withValues(alpha: 0.45),
                               ),
                             ),

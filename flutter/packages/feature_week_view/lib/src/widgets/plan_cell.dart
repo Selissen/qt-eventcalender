@@ -1,5 +1,4 @@
 import 'package:core/core.dart' show Plan;
-import 'package:design_system/design_system.dart' show AppColors;
 import 'package:flutter/material.dart';
 
 // ── Layout constants matching the Qt WeekPlanCell ─────────────────────────────
@@ -25,6 +24,7 @@ class PlanCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return SizedBox(
       height: kCellHeight,
       child: Stack(children: [
@@ -42,7 +42,7 @@ class PlanCell extends StatelessWidget {
               onTap: () => onTap?.call(plan!),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: primary,
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Padding(
