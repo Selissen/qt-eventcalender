@@ -44,3 +44,6 @@ scripts/gen/
 scripts/bin/
 scripts/plans.json
 scripts/plans.tmp
+
+# Flutter generated package config — new packages only; existing ones are tracked
+flutter/packages/feature_plans/.dart_tool/

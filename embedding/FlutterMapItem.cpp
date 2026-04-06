@@ -1,90 +1,60 @@
 #ifndef Q_OS_WASM
 
 #include "FlutterMapItem.h"
-#include "ComponentBridge.h"
-#include "ComponentEngineFactory.h"
 #include "flutter_constants.h"
 
-#include <QQuickWindow>
+#include "../QtFlutterEmbedding/FlutterComponentView.h"
+
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QDebug>
+#include <QVariantMap>
 
 FlutterMapItem::FlutterMapItem(QQuickItem* parent)
     : QQuickItem(parent) {}
 
-FlutterMapItem::~FlutterMapItem()
+void FlutterMapItem::setInstanceId(const QString& v)
 {
-    if (loopTimer_) loopTimer_->stop();
-    // Unregister the messenger callback before destroying the controller.
-    if (bridge_) {
-        bridge_->setParent(nullptr);
-        delete bridge_;
-        bridge_ = nullptr;
-    }
-    if (controller_) FlutterDesktopViewControllerDestroy(controller_);
+    if (instanceId_ == v) return;
+    instanceId_ = v;
+    emit instanceIdChanged();
 }
 
-void FlutterMapItem::ensureEngine()
+// ── Engine lifecycle ──────────────────────────────────────────────────────────
+
+void FlutterMapItem::ensureComponent()
 {
-    if (controller_ || !window())
-        return;
+    if (component_) return;
 
-    controller_ = ComponentEngineFactory::createController(
-        QStringLiteral("/map-component"),
-        qRound(width()), qRound(height()));
+    component_ = new FlutterComponentView(this);
+    component_->setEntrypoint(QStringLiteral("mapComponentMain"));
+    component_->setChannel(QLatin1String(FlutterChannels::kMap));
+    component_->setInstanceId(instanceId_);
 
-    if (!controller_) {
-        const QString reason = QStringLiteral("createController() failed for map component");
-        qWarning("[FlutterMapItem] %s.", qPrintable(reason));
-        emit engineError(reason);
-        return;
-    }
+    // Mirror our geometry into the inner component.
+    component_->setX(0);
+    component_->setY(0);
+    component_->setWidth(width());
+    component_->setHeight(height());
+    component_->setVisible(isVisible());
 
-    // Embed Flutter's HWND as a Win32 child of the QML window.
-    const HWND parentHwnd = reinterpret_cast<HWND>(window()->winId());
-    const HWND flutterHwnd = FlutterDesktopViewGetHWND(
-        FlutterDesktopViewControllerGetView(controller_));
+    // Forward engine errors up to QML.
+    connect(component_, &FlutterComponentView::engineError,
+            this, &FlutterMapItem::engineError);
 
-    LONG style = ::GetWindowLong(flutterHwnd, GWL_STYLE);
-    style = (style & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_OVERLAPPEDWINDOW))
-            | WS_CHILD | WS_CLIPSIBLINGS;
-    ::SetWindowLong(flutterHwnd, GWL_STYLE, style);
-    ::SetParent(flutterHwnd, parentHwnd);
-    ::ShowWindow(flutterHwnd, SW_HIDE);
+    // Flush buffered routes once Flutter's message handler is registered.
+    connect(component_, &FlutterComponentView::readyChanged, this, [this]() {
+        if (component_->ready()) flushPendingRoutes();
+    });
 
-    // Wire the ComponentBridge for bidirectional JSON messages.
-    bridge_ = new ComponentBridge(
-        FlutterDesktopViewControllerGetEngine(controller_),
-        QLatin1String(FlutterChannels::kMap),
-        this);
-
-    // Flutter sends {"method":"ready"} after its first frame, indicating the
-    // Dart message handler is registered.  Flush any pending routes then.
-    connect(bridge_, &ComponentBridge::messageReceived,
-            this, [this](const QString& method, const QJsonObject& args) {
-        if (method == QLatin1String("ready")) {
-            dartReady_ = true;
-            flushPendingRoutes();
-        } else if (method == QLatin1String("toggleRoute")) {
+    // Translate raw JSON messages into typed domain signals.
+    connect(component_, &FlutterComponentView::messageReceived,
+            this, [this](const QString& method, const QVariantMap& args) {
+        if (method == QLatin1String("toggleRoute"))
             emit routeToggled(args.value(QStringLiteral("id")).toInt());
-        }
     });
-
-    // Drive Flutter's message loop at ~60 fps from Qt's main thread.
-    loopTimer_ = new QTimer(this);
-    connect(loopTimer_, &QTimer::timeout, this, [this]() {
-        if (controller_)
-            FlutterDesktopEngineProcessMessages(
-                FlutterDesktopViewControllerGetEngine(controller_));
-    });
-    loopTimer_->start(16);
-
-    syncRect();
-    syncVisibility(isVisible());
-
-    qDebug() << "[FlutterMapItem] Map engine initialised.";
 }
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 void FlutterMapItem::updateRoutes(const QVariantList& allRoutes,
                                   const QVariantList& selectedIds)
@@ -97,7 +67,7 @@ void FlutterMapItem::updateRoutes(const QVariantList& allRoutes,
 
 void FlutterMapItem::flushPendingRoutes()
 {
-    if (!pendingDirty_ || !bridge_ || !dartReady_)
+    if (!pendingDirty_ || !component_ || !component_->ready())
         return;
 
     QJsonArray routesArr;
@@ -115,18 +85,23 @@ void FlutterMapItem::flushPendingRoutes()
     for (const QVariant& v : std::as_const(pendingSelectedIds_))
         selectedArr.append(v.toInt());
 
-    bridge_->send(QStringLiteral("setRoutes"), {
-        { QStringLiteral("routes"),      routesArr },
-        { QStringLiteral("selectedIds"), selectedArr },
+    component_->send(QStringLiteral("setRoutes"), {
+        { QStringLiteral("routes"),      QVariant(routesArr.toVariantList()) },
+        { QStringLiteral("selectedIds"), QVariant(selectedArr.toVariantList()) },
     });
 
     pendingDirty_ = false;
 }
 
+// ── QQuickItem overrides ──────────────────────────────────────────────────────
+
 void FlutterMapItem::geometryChange(const QRectF& newGeom, const QRectF& oldGeom)
 {
     QQuickItem::geometryChange(newGeom, oldGeom);
-    syncRect();
+    if (component_) {
+        component_->setWidth(newGeom.width());
+        component_->setHeight(newGeom.height());
+    }
 }
 
 void FlutterMapItem::itemChange(ItemChange change, const ItemChangeData& value)
@@ -134,41 +109,11 @@ void FlutterMapItem::itemChange(ItemChange change, const ItemChangeData& value)
     QQuickItem::itemChange(change, value);
 
     if (change == ItemSceneChange && value.window) {
-        // Window became available; start engine if already visible.
-        if (isVisible())
-            ensureEngine();
+        if (isVisible()) ensureComponent();
     } else if (change == ItemVisibleHasChanged) {
-        if (value.boolValue)
-            ensureEngine();
-        syncRect();
-        syncVisibility(value.boolValue);
+        if (value.boolValue) ensureComponent();
+        if (component_) component_->setVisible(value.boolValue);
     }
-}
-
-void FlutterMapItem::syncRect()
-{
-    if (!controller_ || !window())
-        return;
-
-    const HWND flutterHwnd = FlutterDesktopViewGetHWND(
-        FlutterDesktopViewControllerGetView(controller_));
-
-    const QPointF scenePos = mapToScene(QPointF(0, 0));
-    ::MoveWindow(flutterHwnd,
-                 qRound(scenePos.x()), qRound(scenePos.y()),
-                 qRound(width()),       qRound(height()),
-                 TRUE);
-}
-
-void FlutterMapItem::syncVisibility(bool visible)
-{
-    if (!controller_)
-        return;
-
-    const HWND flutterHwnd = FlutterDesktopViewGetHWND(
-        FlutterDesktopViewControllerGetView(controller_));
-
-    ::ShowWindow(flutterHwnd, visible ? SW_SHOW : SW_HIDE);
 }
 
 #endif // Q_OS_WASM
