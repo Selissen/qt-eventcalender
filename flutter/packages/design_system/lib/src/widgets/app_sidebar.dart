@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../../design_system/tokens/g_tokens.dart';
 
 class AppSidebarItem {
   const AppSidebarItem({required this.icon, required this.label});
@@ -50,8 +50,8 @@ class AppSidebar extends StatelessWidget {
                   colorScheme.primaryContainer.withValues(alpha: 0.15),
               onTap: () => onItemSelected(i),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
+                horizontal: GTokens.space4,
+                vertical: GTokens.space1,
               ),
             );
           }),

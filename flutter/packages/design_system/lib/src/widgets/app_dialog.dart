@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
-import 'app_button.dart';
+import '../../design_system/tokens/g_tokens.dart';
 
 /// Consistent dialog — use instead of raw showDialog + AlertDialog.
 ///
@@ -40,9 +39,9 @@ class AppDialog extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(cancelLabel),
           ),
-          AppButton(
-            label: confirmLabel,
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
+            child: Text(confirmLabel),
           ),
         ],
       ),
@@ -62,9 +61,9 @@ class AppDialog extends StatelessWidget {
         title: title,
         content: Text(message),
         actions: [
-          AppButton(
-            label: 'OK',
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -76,12 +75,12 @@ class AppDialog extends StatelessWidget {
     return AlertDialog(
       title: Text(title),
       content: Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        padding: const EdgeInsets.only(top: GTokens.space2),
         child: content,
       ),
       actions: actions,
       actionsPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          GTokens.space4, 0, GTokens.space4, GTokens.space4),
     );
   }
 }
