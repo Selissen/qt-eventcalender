@@ -1,5 +1,5 @@
 import 'package:core/src/week_grid.dart';
-import 'package:core/src/providers/plans_provider.dart';
+import 'package:core/src/cubits/plans_cubit.dart' show Plan;
 import 'package:core/src/proto/calendar.pb.dart';
 import 'package:flutter_test/flutter_test.dart';
 

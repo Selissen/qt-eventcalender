@@ -15,3 +15,7 @@ dependencies:
     path: ../core
   design_system:
     path: ../design_system
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
